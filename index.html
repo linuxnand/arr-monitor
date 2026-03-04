@@ -177,7 +177,9 @@ const SVCS = [
   { id:'sonarr',    name:'Sonarr',     port:8989, ico:'📺', cls:'iso', paths:['/api/v3/health','/'] },
   { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'🔍', cls:'ipr', paths:['/api/v1/health','/'] },
   { id:'autobrr',   name:'Autobrr',    port:7474, ico:'⚡', cls:'iau', paths:['/api/healthz/liveness','/'] },
-  { id:'crossseed', name:'Cross-seed', port:2468, ico:'🌱', cls:'ics', paths:['/api/ping','/'] },
+  // cross-seed solo expone endpoints de API, no tiene UI en /
+  // /api/ping responde aunque sea con 400 — eso ya confirma que está vivo
+  { id:'crossseed', name:'Cross-seed', port:2468, ico:'🌱', cls:'ics', paths:['/api/ping'] },
 ];
 
 const DEFAULTS = {
@@ -260,7 +262,8 @@ async function checkSvc(svc) {
       });
       clearTimeout(tid);
       const ping = Date.now() - t0;
-      if (res.ok || res.status === 401 || res.status === 403 || res.status === 404) {
+      // 400 agregado para cross-seed: responde "Unknown endpoint" con 400, lo cual confirma que está vivo
+      if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
         let msg = 'Activo';
         if (res.ok) {
           const ct = res.headers.get('content-type') || '';
@@ -274,6 +277,7 @@ async function checkSvc(svc) {
             } catch(e) { msg = 'Respondiendo'; }
           } else msg = 'Respondiendo';
         } else if (res.status === 401) msg = 'Activo (sin auth)';
+        else if (res.status === 400) msg = 'Activo';
         st[svc.id] = { state:'up', msg, ping };
         return;
       }
