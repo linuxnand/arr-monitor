@@ -39,7 +39,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .card.sdown{border-color:rgba(248,81,73,.25);box-shadow:0 0 20px rgba(248,81,73,.06)}
 .card.schk{border-color:rgba(210,153,34,.2)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.svc-ico{width:41px;height:41px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px}
+.svc-ico{width:41px;height:41px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px;padding:7px;}
 .svc-info{flex:1;min-width:0}
 .svc-name{font-size:14px;font-weight:600;margin-bottom:2px}
 .svc-url{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -57,7 +57,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .stxt.up{color:var(--green)}.stxt.down{color:var(--red)}.stxt.chk{color:var(--yellow)}
 .ping{display:inline-block;font-size:10px;font-family:'JetBrains Mono',monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--muted)}
 .ping.f{color:var(--green);border-color:rgba(63,185,80,.25)}.ping.s{color:var(--yellow);border-color:rgba(210,153,34,.25)}
-.ir{background:rgba(255,193,7,.1)}.iso{background:rgba(33,150,243,.1)}.ipr{background:rgba(156,39,176,.1)}.iau{background:rgba(0,188,212,.1)}.ics{background:rgba(76,175,80,.1)}
+.ir{background:rgba(255,193,7,.1)}.iso{background:rgba(33,150,243,.1)}.ipr{background:rgba(156,39,176,.1)}.iau{background:rgba(0,188,212,.1)}.ics{background:rgba(76,175,80,.1)}.ibz{background:rgba(255,152,0,.1)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end}
 .overlay.on{display:flex}
 .sheet{background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:20px 20px 0 0;width:100%;max-height:92dvh;overflow-y:auto;padding-bottom:36px;animation:shUp .3s cubic-bezier(.34,1.56,.64,1)}
@@ -113,7 +113,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
     <div>
       <div class="s-label">Estado general</div>
       <div class="s-count">
-        <span class="up" id="upCount">—</span><span class="sep">/</span><span class="tot">5</span>
+        <span class="up" id="upCount">—</span><span class="sep">/</span><span class="tot">6</span>
         <span style="font-size:12px;color:var(--muted)"> online</span>
       </div>
       <div class="last" id="lastCheck">Verificando...</div>
@@ -172,19 +172,20 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 
 <script>
 const SVCS = [
-  { id:'radarr',    name:'Radarr',     port:7878, ico:'🎬', cls:'ir',  paths:['/api/v3/health','/'] },
-  { id:'sonarr',    name:'Sonarr',     port:8989, ico:'📺', cls:'iso', paths:['/api/v3/health','/'] },
-  { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'🔍', cls:'ipr', paths:['/api/v1/health','/'] },
-  { id:'autobrr',   name:'Autobrr',    port:7474, ico:'⚡', cls:'iau', paths:['/api/healthz/liveness','/'] },
-  { id:'crossseed', name:'Cross-seed', port:2468, ico:'🌱', cls:'ics', paths:['/api/ping','/'] },
+  { id:'radarr',    name:'Radarr',     port:7878, ico:'<img src="https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/Radarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🎬\')">', cls:'ir',  paths:['/api/v3/health','/'] },
+  { id:'sonarr',    name:'Sonarr',     port:8989, ico:'<img src="https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📺\')">', cls:'iso', paths:['/api/v3/health','/'] },
+  { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'] },
+  { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'] },
+  { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'] },
+  { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], fixedHost:'192.168.68.54' },
 ];
 
 const DEFAULTS = {
   host: '100.93.228.17',
   https: false,
   autoRefresh: true,
-  ports:   { radarr:7878, sonarr:8989, prowlarr:9696, autobrr:7474, crossseed:2468 },
-  apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'' }
+  ports:   { radarr:7878, sonarr:8989, prowlarr:9696, autobrr:7474, crossseed:2468, qui:7476 },
+  apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'' }
 };
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
@@ -203,7 +204,8 @@ function save() {
 }
 
 function base(svc) {
-  return `${cfg.https ? 'https' : 'http'}://${cfg.host}:${cfg.ports[svc.id] || svc.port}`;
+  const host = svc.fixedHost || cfg.host;
+  return `${cfg.https ? 'https' : 'http'}://${host}:${cfg.ports[svc.id] || svc.port}`;
 }
 
 function render() {
