@@ -128,7 +128,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
   </div>
 
   <div class="list" id="list"></div>
-  <footer>ArrMonitor v2.4</footer>
+  <footer>ArrMonitor v2.2</footer>
 </div>
 
 <div class="overlay" id="ov" onclick="if(event.target===this)closeSettings()">
@@ -178,7 +178,7 @@ const SVCS = [
   { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'] },
   { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'] },
   { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], fixedHost:'192.168.68.54' },
-  { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/morpheus65535/bazarr/master/frontend/public/logo128.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://www.bazarr.media/favicon.ico\';this.onerror=null;">', cls:'ibzr', paths:['/api/system/health','/'] },
+  { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/bazarr-logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🗣\')">', cls:'ibzr', paths:['/api/system/health','/'] },
 ];
 
 const DEFAULTS = {
