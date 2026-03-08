@@ -12,18 +12,18 @@
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--s2:#21262d;--border:#30363d;--text:#e6edf3;--muted:#7d8590;--green:#3fb950;--gG:rgba(63,185,80,0.4);--red:#f85149;--gR:rgba(248,81,73,0.4);--yellow:#d29922;--gY:rgba(210,153,34,0.35);--accent:#58a6ff;--r:12px}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100dvh;padding:20px 16px 32px;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100dvh;padding:14px 14px 24px;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(88,166,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
 .wrap{position:relative;z-index:1;max-width:480px;margin:0 auto}
-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-.logo{display:flex;align-items:center;gap:10px}
-.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,#1c2a3a,#1f3a5f);border:1px solid rgba(88,166,255,.3);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(88,166,255,.15);font-size:19px}
-.logo-text{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;background:linear-gradient(135deg,#e6edf3,#58a6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.logo-sub{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,#1c2a3a,#1f3a5f);border:1px solid rgba(88,166,255,.3);border-radius:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(88,166,255,.15);font-size:16px}
+.logo-text{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;background:linear-gradient(135deg,#e6edf3,#58a6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-sub{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace}
 .btn-icon{width:36px;height:36px;border-radius:10px;background:var(--surface);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
 .btn-icon:active{background:var(--s2);color:var(--text);border-color:var(--accent)}
 .btn-icon svg{width:16px;height:16px}
-.summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .s-label{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase}
 .s-count{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:2px}
 .s-count .up{color:var(--green)}.s-count .sep{color:var(--border);margin:0 2px}.s-count .tot{color:var(--muted);font-size:16px}
@@ -33,17 +33,17 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .rbtn svg{width:14px;height:14px}
 .rbtn.spin svg{animation:spin 1s linear infinite}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-.list{display:flex;flex-direction:column;gap:9px;margin-bottom:18px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:13px;transition:border-color .3s,box-shadow .3s;animation:fadeUp .4s ease both}
+.list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:7px 12px;display:flex;align-items:center;gap:10px;transition:border-color .3s,box-shadow .3s;animation:fadeUp .4s ease both}
 .card.sup{border-color:rgba(63,185,80,.25);box-shadow:0 0 20px rgba(63,185,80,.06)}
 .card.sdown{border-color:rgba(248,81,73,.25);box-shadow:0 0 20px rgba(248,81,73,.06)}
 .card.schk{border-color:rgba(210,153,34,.2)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.svc-ico{width:41px;height:41px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px;padding:7px;}
+.svc-ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;padding:6px;}
 .svc-info{flex:1;min-width:0}
-.svc-name{font-size:14px;font-weight:600;margin-bottom:2px}
-.svc-url{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.svc-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:5px}
+.svc-name{font-size:14px;font-weight:600;margin-bottom:0;line-height:1.2}
+.svc-url{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.svc-meta{font-size:11px;color:var(--muted);margin-top:0;display:flex;align-items:center;gap:5px;line-height:1.2}
 .sw{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
 .sl{width:13px;height:13px;border-radius:50%}
 .sl.up{background:var(--green);box-shadow:0 0 0 3px rgba(63,185,80,.15),0 0 12px var(--gG);animation:pg 2.5s ease-in-out infinite}
@@ -89,6 +89,13 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tog input:checked+.tslider{background:rgba(63,185,80,.2);border-color:var(--green)}
 .tog input:checked+.tslider::before{transform:translateX(20px);background:var(--green)}
 footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;opacity:.35;margin-top:4px}
+.rbtn-svc{width:32px;height:32px;border-radius:8px;background:var(--s2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;padding:0}
+.rbtn-svc svg{width:13px;height:13px;pointer-events:none}
+.rbtn-svc:active{background:rgba(88,166,255,.15);border-color:var(--accent);color:var(--accent)}
+.rbtn-svc.spin{opacity:.6;cursor:default}
+.rbtn-svc.spin svg{animation:spin 1s linear infinite}
+.rbtn-svc.ok{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:var(--green);font-size:13px}
+.rbtn-svc.err{background:rgba(248,81,73,.15);border-color:rgba(248,81,73,.4);color:var(--red);font-size:13px}
 </style>
 </head>
 <body>
@@ -148,6 +155,19 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
       </div>
     </div>
     <div class="sec">
+      <div class="slbl">Servidor Restart</div>
+      <div class="fg">
+        <div class="fr">
+          <div class="fl">IP del servidor restart (arrmonitor_server.py)</div>
+          <input class="fi" id="cRestartHost" placeholder="192.168.68.54" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        </div>
+        <div class="fr">
+          <div class="fl">Puerto</div>
+          <input class="fi" id="cRestartPort" type="number" min="1" max="65535" placeholder="9797" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <div class="sec">
       <div class="slbl">Servicios — Puerto y API Key opcional</div>
       <div class="fg" id="svcFields"></div>
     </div>
@@ -172,25 +192,28 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 
 <script>
 const SVCS = [
-  { id:'radarr',    name:'Radarr',     port:7878, ico:'<img src="https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/Radarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🎬\')">', cls:'ir',  paths:['/api/v3/health','/'] },
-  { id:'sonarr',    name:'Sonarr',     port:8989, ico:'<img src="https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📺\')">', cls:'iso', paths:['/api/v3/health','/'] },
-  { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'] },
-  { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'] },
-  { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'] },
-  { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], fixedHost:'192.168.68.54' },
-  { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/bazarr-logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🗣\')">', cls:'ibzr', paths:['/api/system/health','/'] },
+  { id:'radarr',    name:'Radarr',     port:7878, ico:'<img src="https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/Radarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🎬\')">', cls:'ir',  paths:['/api/v3/health','/'],            restart:'radarr' },
+  { id:'sonarr',    name:'Sonarr',     port:8989, ico:'<img src="https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📺\')">', cls:'iso', paths:['/api/v3/health','/'],            restart:'sonarr' },
+  { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'],        restart:'prowlarr' },
+  { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'], restart:'autobrr' },
+  { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed' },
+  { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], fixedHost:'192.168.68.54', restart:'qui' },
+  { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/bazarr-logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🗣\')">', cls:'ibzr', paths:['/api/system/health','/'], restart:'bazarr' },
 ];
 
 const DEFAULTS = {
   host: '100.93.228.17',
   https: false,
   autoRefresh: true,
+  restartHost: '192.168.68.54',  // IP de tu PC con el servidor restart
+  restartPort: 9797,              // Puerto del servidor restart
   ports:   { radarr:7878, sonarr:8989, prowlarr:9696, autobrr:7474, crossseed:2468, qui:7476, bazarr:6767 },
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'' }
 };
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
+let rst = {}; // estado de reinicios: { svcId: 'restarting'|'ok'|'err' }
 let timer = null;
 
 function load() {
@@ -218,6 +241,23 @@ function render() {
     const cc = { up:'sup', down:'sdown', checking:'schk' }[x.state] || '';
     const lbl = { up:'UP', down:'DOWN', checking:'···', idle:'—' }[x.state] || '—';
     const pb = x.ping != null ? `<span class="ping ${x.ping < 300 ? 'f' : 's'}">${x.ping}ms</span>` : '';
+    const rs = rst[s.id];
+    let rbHtml = '';
+    if (s.restart) {
+      if (rs === 'restarting') {
+        rbHtml = `<button class="rbtn-svc spin" disabled title="Reiniciando...">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg>
+        </button>`;
+      } else if (rs === 'ok') {
+        rbHtml = `<button class="rbtn-svc ok" onclick="restartSvc('${s.id}')" title="Reiniciar ${s.name}">✓</button>`;
+      } else if (rs === 'err') {
+        rbHtml = `<button class="rbtn-svc err" onclick="restartSvc('${s.id}')" title="Error — reintentar">✕</button>`;
+      } else {
+        rbHtml = `<button class="rbtn-svc" onclick="restartSvc('${s.id}')" title="Reiniciar ${s.name}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg>
+        </button>`;
+      }
+    }
     l.innerHTML += `
       <div class="card ${cc}" style="animation-delay:${i * .07}s">
         <div class="svc-ico ${s.cls}">${s.ico}</div>
@@ -230,6 +270,7 @@ function render() {
           <div class="sl ${lc}"></div>
           <div class="stxt ${lc}">${lbl}</div>
         </div>
+        ${rbHtml}
       </div>`;
   });
 }
@@ -304,6 +345,31 @@ async function checkSvc(svc) {
   st[svc.id] = { state:'down', msg:'No accesible', ping: Date.now() - t0 };
 }
 
+async function restartSvc(id) {
+  rst[id] = 'restarting';
+  render();
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(
+      `http://${cfg.restartHost}:${cfg.restartPort}/restart/${id}`,
+      { signal: ctrl.signal, mode: 'cors' }
+    );
+    clearTimeout(tid);
+    rst[id] = res.ok ? 'ok' : 'err';
+  } catch(e) {
+    rst[id] = 'err';
+  }
+  render();
+  // Limpiar estado visual a los 3s y re-chequear
+  setTimeout(() => {
+    delete rst[id];
+    const svc = SVCS.find(s => s.id === id);
+    if (svc) checkSvc(svc).then(() => { render(); updateSum(); });
+    else render();
+  }, 3000);
+}
+
 async function checkAll() {
   const b = document.getElementById('rbtn');
   b.classList.add('spin'); b.disabled = true;
@@ -345,6 +411,8 @@ function openSettings() {
   document.getElementById('cHost').value = cfg.host;
   document.getElementById('cAuto').checked = cfg.autoRefresh;
   document.getElementById('cHttps').checked = cfg.https;
+  document.getElementById('cRestartHost').value = cfg.restartHost;
+  document.getElementById('cRestartPort').value = cfg.restartPort;
   buildSvcFields();
   document.getElementById('ov').classList.add('on');
 }
@@ -355,6 +423,9 @@ function saveSettings() {
   cfg.host = document.getElementById('cHost').value.trim() || DEFAULTS.host;
   cfg.autoRefresh = document.getElementById('cAuto').checked;
   cfg.https = document.getElementById('cHttps').checked;
+  cfg.restartHost = document.getElementById('cRestartHost').value.trim() || DEFAULTS.restartHost;
+  const rp = parseInt(document.getElementById('cRestartPort').value);
+  if (rp > 0 && rp < 65536) cfg.restartPort = rp;
   SVCS.forEach(s => {
     const ak = document.getElementById(`ak_${s.id}`)?.value.trim();
     if (ak !== undefined) cfg.apikeys[s.id] = ak;
