@@ -135,6 +135,20 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
   </div>
 
   <div class="list" id="list"></div>
+
+  <div class="card" id="srvCard" style="opacity:.7;margin-bottom:12px">
+    <div class="svc-ico" style="background:rgba(88,166,255,.08);font-size:16px">⚙️</div>
+    <div class="svc-info">
+      <div class="svc-name" style="font-size:13px">Restart Server</div>
+      <div class="svc-url" id="srvUrl">—</div>
+      <div class="svc-meta" id="srvMeta">Sin verificar</div>
+    </div>
+    <div class="sw">
+      <div class="sl idle" id="srvDot"></div>
+      <div class="stxt" id="srvLbl">—</div>
+    </div>
+  </div>
+
   <footer>ArrMonitor v2.2</footer>
 </div>
 
@@ -370,10 +384,42 @@ async function restartSvc(id) {
   }, 3000);
 }
 
+async function checkRestartServer() {
+  const url = `http://${cfg.restartHost}:${cfg.restartPort}/status`;
+  document.getElementById('srvUrl').textContent = `${cfg.restartHost}:${cfg.restartPort}`;
+  const dot = document.getElementById('srvDot');
+  const lbl = document.getElementById('srvLbl');
+  const meta = document.getElementById('srvMeta');
+  const card = document.getElementById('srvCard');
+
+  dot.className = 'sl chk'; lbl.className = 'stxt chk'; lbl.textContent = '···';
+  meta.textContent = 'Verificando...'; card.style.opacity = '1';
+
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 5000);
+    const t0 = Date.now();
+    const res = await fetch(url, { signal: ctrl.signal, mode: 'cors', cache: 'no-store' });
+    clearTimeout(tid);
+    const ping = Date.now() - t0;
+    if (res.ok) {
+      dot.className = 'sl up'; lbl.className = 'stxt up'; lbl.textContent = 'UP';
+      meta.innerHTML = `Activo <span class="ping f">${ping}ms</span>`;
+      card.style.borderColor = 'rgba(63,185,80,.25)';
+    } else {
+      throw new Error('not ok');
+    }
+  } catch(e) {
+    dot.className = 'sl down'; lbl.className = 'stxt down'; lbl.textContent = 'DOWN';
+    meta.textContent = e.name === 'AbortError' ? 'Timeout' : 'No accesible';
+    card.style.borderColor = 'rgba(248,81,73,.25)';
+  }
+}
+
 async function checkAll() {
   const b = document.getElementById('rbtn');
   b.classList.add('spin'); b.disabled = true;
-  await Promise.all(SVCS.map(s => checkSvc(s)));
+  await Promise.all([...SVCS.map(s => checkSvc(s)), checkRestartServer()]);
   render(); updateSum();
   b.classList.remove('spin'); b.disabled = false;
 }
