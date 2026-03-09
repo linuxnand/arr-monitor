@@ -89,13 +89,13 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tog input:checked+.tslider{background:rgba(63,185,80,.2);border-color:var(--green)}
 .tog input:checked+.tslider::before{transform:translateX(20px);background:var(--green)}
 footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;opacity:.35;margin-top:4px}
-.rbtn-svc{width:32px;height:32px;border-radius:8px;background:var(--s2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;padding:0}
-.rbtn-svc svg{width:13px;height:13px;pointer-events:none}
+.rbtn-svc{width:38px;height:38px;border-radius:9px;background:var(--s2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;padding:0}
+.rbtn-svc svg{width:16px;height:16px;pointer-events:none}
 .rbtn-svc:active{background:rgba(88,166,255,.15);border-color:var(--accent);color:var(--accent)}
 .rbtn-svc.spin{opacity:.6;cursor:default}
 .rbtn-svc.spin svg{animation:spin 1s linear infinite}
-.rbtn-svc.ok{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:var(--green);font-size:13px}
-.rbtn-svc.err{background:rgba(248,81,73,.15);border-color:rgba(248,81,73,.4);color:var(--red);font-size:13px}
+.rbtn-svc.ok{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:var(--green);font-size:15px}
+.rbtn-svc.err{background:rgba(248,81,73,.15);border-color:rgba(248,81,73,.4);color:var(--red);font-size:15px}
 </style>
 </head>
 <body>
@@ -147,9 +147,10 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
       <div class="sl idle" id="srvDot"></div>
       <div class="stxt" id="srvLbl">—</div>
     </div>
+    <div style="width:38px;flex-shrink:0"></div>
   </div>
 
-  <footer>ArrMonitor v2.2</footer>
+  <footer>ArrMonitor v2.6</footer>
 </div>
 
 <div class="overlay" id="ov" onclick="if(event.target===this)closeSettings()">
