@@ -12,7 +12,7 @@
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--s2:#21262d;--border:#30363d;--text:#e6edf3;--muted:#7d8590;--green:#3fb950;--gG:rgba(63,185,80,0.4);--red:#f85149;--gR:rgba(248,81,73,0.4);--yellow:#d29922;--gY:rgba(210,153,34,0.35);--accent:#58a6ff;--r:12px}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100dvh;padding:14px 14px 24px;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100dvh;padding:10px 14px 24px;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(88,166,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
 .wrap{position:relative;z-index:1;max-width:480px;margin:0 auto}
 header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -89,6 +89,26 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tog input:checked+.tslider{background:rgba(63,185,80,.2);border-color:var(--green)}
 .tog input:checked+.tslider::before{transform:translateX(20px);background:var(--green)}
 footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;opacity:.35;margin-top:4px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;align-items:center}
+.tab{flex:1;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;text-align:center;transition:all .2s;font-family:'Inter',sans-serif}
+.tab.active{background:linear-gradient(135deg,#1c2a3a,#1f3a5f);border-color:rgba(88,166,255,.4);color:var(--accent)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.cmd-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.cmd-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:10px;transition:border-color .3s,box-shadow .3s}
+.cmd-ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.cmd-info{flex:1;min-width:0}
+.cmd-name{font-size:14px;font-weight:600;line-height:1.2}
+.cmd-status{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;min-height:14px}
+.cbtn{width:38px;height:38px;border-radius:9px;background:var(--s2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;padding:0}
+.cbtn svg{width:16px;height:16px;pointer-events:none}
+.cbtn:active{background:rgba(88,166,255,.15);border-color:var(--accent);color:var(--accent)}
+.cbtn.spin{opacity:.6;cursor:default}.cbtn.spin svg{animation:spin 1s linear infinite}
+.cbtn.ok{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:var(--green);font-size:15px}
+.cbtn.err{background:rgba(248,81,73,.15);border-color:rgba(248,81,73,.4);color:var(--red);font-size:15px}
+.cmd-card.cdanger{border-color:rgba(248,81,73,.2);background:rgba(248,81,73,.04)}
+.cmd-card.cdanger .cmd-ico{background:rgba(248,81,73,.1)}
+.cmd-card.cnormal .cmd-ico{background:rgba(88,166,255,.08)}
+.cmd-card.cgreen .cmd-ico{background:rgba(63,185,80,.08)}
 .rbtn-svc{width:38px;height:38px;border-radius:9px;background:var(--s2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;padding:0}
 .rbtn-svc svg{width:16px;height:16px;pointer-events:none}
 .rbtn-svc:active{background:rgba(88,166,255,.15);border-color:var(--accent);color:var(--accent)}
@@ -100,22 +120,20 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="logo">
-      <div class="logo-icon">📡</div>
-      <div>
-        <div class="logo-text">ArrMonitor</div>
-        <div class="logo-sub">via tailscale</div>
-      </div>
-    </div>
-    <div class="btn-icon" onclick="openSettings()" title="Configuración">
+  <!-- Top bar: tabs + settings -->
+  <div class="tabs">
+    <div class="tab active" id="tab-monitor" onclick="switchTab('monitor')">📡 ArrMonitor</div>
+    <div class="tab" id="tab-cmds" onclick="switchTab('cmds')">⚡ Comandos</div>
+    <div class="btn-icon" onclick="openSettings()" title="Configuración" style="flex-shrink:0;margin-left:2px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </div>
-  </header>
+  </div>
 
+  <!-- Tab: Monitor -->
+  <div class="tab-pane active" id="pane-monitor">
   <div class="summary">
     <div>
       <div class="s-label">Estado general</div>
@@ -148,6 +166,12 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
       <div class="stxt" id="srvLbl">—</div>
     </div>
     <div style="width:38px;flex-shrink:0"></div>
+  </div>
+  </div><!-- /pane-monitor -->
+
+  <!-- Tab: Comandos -->
+  <div class="tab-pane" id="pane-cmds">
+    <div class="cmd-list" id="cmdList"></div>
   </div>
 
   <footer>ArrMonitor v2.6</footer>
@@ -474,6 +498,78 @@ function saveSettings() {
   });
   save(); setupAuto(); closeSettings();
   checkAll();
+}
+
+// ── Tab switching ──────────────────────────────────────
+function switchTab(name) {
+  ['monitor','cmds'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('pane-' + t).classList.toggle('active', t === name);
+  });
+  if (name === 'cmds') renderCmds();
+}
+
+// ── Comandos ───────────────────────────────────────────
+const CMDS = [
+  { id:'plex-refresh', name:'Plex Refresh',  ico:'🎬', desc:'Actualiza últimas reproducciones', cls:'cnormal' },
+  { id:'jd-open',      name:'JDownloader',   ico:'⬇️',  desc:'Abrir JDownloader',               cls:'cnormal' },
+  { id:'jd-kill',      name:'JD Kill',       ico:'🛑', desc:'Cerrar JDownloader',              cls:'cnormal' },
+  { id:'shutdown',     name:'APAGAR',        ico:'🔴', desc:'Apagar la PC',                    cls:'cdanger', confirm: true },
+  { id:'reboot',       name:'Restart',       ico:'🔁', desc:'Reiniciar la PC',                 cls:'cdanger', confirm: true },
+];
+
+let cmdSt = {}; // { id: 'running'|'ok'|'err' }
+
+function renderCmds() {
+  const c = document.getElementById('cmdList');
+  c.innerHTML = '';
+  CMDS.forEach(cmd => {
+    const s = cmdSt[cmd.id];
+    let btnHtml = '';
+    const runSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+    if (s === 'running') {
+      const spinSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg>`;
+      btnHtml = `<button class="cbtn spin" disabled>${spinSvg}</button>`;
+    } else if (s === 'ok') {
+      btnHtml = `<button class="cbtn ok" onclick="runCmd('${cmd.id}')">✓</button>`;
+    } else if (s === 'err') {
+      btnHtml = `<button class="cbtn err" onclick="runCmd('${cmd.id}')">✕</button>`;
+    } else {
+      btnHtml = `<button class="cbtn" onclick="runCmd('${cmd.id}')">${runSvg}</button>`;
+    }
+    const statusText = s === 'running' ? 'Ejecutando...' : s === 'ok' ? 'Listo ✓' : s === 'err' ? 'Error al ejecutar' : cmd.desc;
+    c.innerHTML += `
+      <div class="cmd-card ${cmd.cls}" id="cmdcard-${cmd.id}">
+        <div class="cmd-ico">${cmd.ico}</div>
+        <div class="cmd-info">
+          <div class="cmd-name">${cmd.name}</div>
+          <div class="cmd-status" id="cmdst-${cmd.id}">${statusText}</div>
+        </div>
+        ${btnHtml}
+      </div>`;
+  });
+}
+
+async function runCmd(id) {
+  const cmd = CMDS.find(c => c.id === id);
+  if (!cmd) return;
+  if (cmd.confirm && !confirm(`¿Seguro que querés ejecutar "${cmd.name}"?`)) return;
+  cmdSt[id] = 'running';
+  renderCmds();
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(
+      `http://${cfg.host}:${cfg.restartPort}/cmd/${id}`,
+      { signal: ctrl.signal, mode: 'cors' }
+    );
+    clearTimeout(tid);
+    cmdSt[id] = res.ok ? 'ok' : 'err';
+  } catch(e) {
+    cmdSt[id] = 'err';
+  }
+  renderCmds();
+  setTimeout(() => { delete cmdSt[id]; renderCmds(); }, 4000);
 }
 
 // Init — cargar config guardada (o defaults), arrancar directo
