@@ -551,6 +551,8 @@ function renderCmds() {
   });
 }
 
+const CMD_TIMEOUTS = { '0j': 320000 }; // ms — por defecto 20s, 0j hasta 5min
+
 async function runCmd(id) {
   const cmd = CMDS.find(c => c.id === id);
   if (!cmd) return;
@@ -559,7 +561,8 @@ async function runCmd(id) {
   renderCmds();
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 15000);
+    const timeout = CMD_TIMEOUTS[id] || 20000;
+    const tid = setTimeout(() => ctrl.abort(), timeout);
     const res = await fetch(
       `http://${cfg.host}:${cfg.restartPort}/cmd/${id}`,
       { signal: ctrl.signal, mode: 'cors' }
