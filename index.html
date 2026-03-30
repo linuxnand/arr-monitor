@@ -174,7 +174,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
     <div class="cmd-list" id="cmdList"></div>
   </div>
 
-  <footer>ArrMonitor v2.6</footer>
+  <footer>ArrMonitor v2.7</footer>
 </div>
 
 <div class="overlay" id="ov" onclick="if(event.target===this)closeSettings()">
@@ -552,7 +552,7 @@ function renderCmds() {
   });
 }
 
-const CMD_TIMEOUTS = { '0j': 320000 }; // ms — por defecto 20s, 0j hasta 5min
+const CMD_TIMEOUTS = { '0j': 320000, 'mpv-launch': 35000 }; // ms — por defecto 20s, 0j hasta 5min, mpv-launch 35s (kill+10s+arranque)
 
 async function runCmd(id) {
   const cmd = CMDS.find(c => c.id === id);
