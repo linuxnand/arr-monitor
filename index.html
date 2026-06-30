@@ -116,6 +116,22 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 .rbtn-svc.spin svg{animation:spin 1s linear infinite}
 .rbtn-svc.ok{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:var(--green);font-size:15px}
 .rbtn-svc.err{background:rgba(248,81,73,.15);border-color:rgba(248,81,73,.4);color:var(--red);font-size:15px}
+.card{cursor:default}
+.card.expandable{cursor:pointer}
+.card.expandable:active{background:var(--s2)}
+.vexp{max-height:0;overflow:hidden;transition:max-height .25s ease;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);margin-top:-6px;margin-bottom:6px}
+.vexp.open{max-height:160px}
+.vexp-in{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.vrow{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.vrow .vl{color:var(--muted)}
+.vrow .vv{font-family:'JetBrains Mono',monospace;font-weight:600}
+.vmsg{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.vupbtn{background:linear-gradient(135deg,#1a4a7a,#1f5c99);border:1px solid rgba(88,166,255,.4);border-radius:8px;padding:9px;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;text-align:center}
+.vupbtn:active{background:rgba(88,166,255,.2)}
+.vupbtn.disabled{opacity:.5;cursor:default}
+.vupbtn.spin{opacity:.7}
+.vok{color:var(--green)}
+.verr{color:var(--red)}
 </style>
 </head>
 <body>
@@ -228,7 +244,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 <script>
 const SVCS = [
   { id:'radarr',    name:'Radarr',     port:7878, ico:'<img src="https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/Radarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🎬\')">', cls:'ir',  paths:['/api/v3/health','/'],            restart:'radarr' },
-  { id:'sonarr',    name:'Sonarr',     port:8989, ico:'<img src="https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📺\')">', cls:'iso', paths:['/api/v3/health','/'],            restart:'sonarr' },
+  { id:'sonarr',    name:'Sonarr',     port:8989, ico:'<img src="https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📺\')">', cls:'iso', paths:['/api/v3/health','/'],            restart:'sonarr', updatable:true },
   { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'],        restart:'prowlarr' },
   { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'], restart:'autobrr' },
   { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed' },
@@ -248,6 +264,8 @@ const DEFAULTS = {
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
 let rst = {}; // estado de reinicios: { svcId: 'restarting'|'ok'|'err' }
+let verSt = {}; // estado de chequeo/actualizacion de version: { svcId: {state, current, latest, needsUpdate, msg} }
+let expanded = new Set(); // ids de servicios con el panel desplegable abierto
 let timer = null;
 
 function load() {
@@ -279,21 +297,22 @@ function render() {
     let rbHtml = '';
     if (s.restart) {
       if (rs === 'restarting') {
-        rbHtml = `<button class="rbtn-svc spin" disabled title="Reiniciando...">
+        rbHtml = `<button class="rbtn-svc spin" disabled title="Reiniciando..." onclick="event.stopPropagation()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg>
         </button>`;
       } else if (rs === 'ok') {
-        rbHtml = `<button class="rbtn-svc ok" onclick="restartSvc('${s.id}')" title="Reiniciar ${s.name}">✓</button>`;
+        rbHtml = `<button class="rbtn-svc ok" onclick="event.stopPropagation();restartSvc('${s.id}')" title="Reiniciar ${s.name}">✓</button>`;
       } else if (rs === 'err') {
-        rbHtml = `<button class="rbtn-svc err" onclick="restartSvc('${s.id}')" title="Error — reintentar">✕</button>`;
+        rbHtml = `<button class="rbtn-svc err" onclick="event.stopPropagation();restartSvc('${s.id}')" title="Error — reintentar">✕</button>`;
       } else {
-        rbHtml = `<button class="rbtn-svc" onclick="restartSvc('${s.id}')" title="Reiniciar ${s.name}">
+        rbHtml = `<button class="rbtn-svc" onclick="event.stopPropagation();restartSvc('${s.id}')" title="Reiniciar ${s.name}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg>
         </button>`;
       }
     }
+    const isOpen = s.updatable && expanded.has(s.id);
     l.innerHTML += `
-      <div class="card ${cc}" style="animation-delay:${i * .07}s">
+      <div class="card ${cc} ${s.updatable ? 'expandable' : ''}" style="animation-delay:${i * .07}s" ${s.updatable ? `onclick="toggleExpand('${s.id}')"` : ''}>
         <div class="svc-ico ${s.cls}">${s.ico}</div>
         <div class="svc-info">
           <div class="svc-name">${s.name}</div>
@@ -305,8 +324,117 @@ function render() {
           <div class="stxt ${lc}">${lbl}</div>
         </div>
         ${rbHtml}
-      </div>`;
+      </div>
+      ${s.updatable ? `<div class="vexp ${isOpen ? 'open' : ''}" id="vexp-${s.id}"><div class="vexp-in">${versionPanelHtml(s.id)}</div></div>` : ''}`;
   });
+}
+
+function versionPanelHtml(id) {
+  const v = verSt[id] || { state: 'idle' };
+  if (v.state === 'idle' || v.state === 'checking') {
+    return `<div class="vmsg">Buscando versión instalada y la última disponible...</div>`;
+  }
+  if (v.state === 'check-error') {
+    return `<div class="vmsg verr">No se pudo consultar la versión: ${v.msg || 'error'}</div>
+      <div class="vupbtn" onclick="event.stopPropagation();checkVersion('${id}')">↻ Reintentar</div>`;
+  }
+  if (v.state === 'updating') {
+    return `
+      <div class="vrow"><span class="vl">Instalada</span><span class="vv">${v.current || '—'}</span></div>
+      <div class="vrow"><span class="vl">Última</span><span class="vv">${v.latest || '—'}</span></div>
+      <div class="vupbtn spin" onclick="event.stopPropagation()">Actualizando, puede tardar unos minutos...</div>`;
+  }
+  if (v.state === 'update-ok') {
+    return `
+      <div class="vrow"><span class="vl">Instalada</span><span class="vv vok">${v.current || '—'}</span></div>
+      <div class="vmsg vok">✓ Actualizado correctamente</div>`;
+  }
+  if (v.state === 'update-error') {
+    return `
+      <div class="vrow"><span class="vl">Instalada</span><span class="vv">${v.current || '—'}</span></div>
+      <div class="vrow"><span class="vl">Última</span><span class="vv">${v.latest || '—'}</span></div>
+      <div class="vmsg verr">✕ Error al actualizar: ${v.msg || 'desconocido'}</div>
+      <div class="vupbtn" onclick="event.stopPropagation();runUpdate('${id}')">↻ Reintentar</div>`;
+  }
+  // state === 'checked'
+  const rows = `
+    <div class="vrow"><span class="vl">Instalada</span><span class="vv">${v.current || 'desconocida'}</span></div>
+    <div class="vrow"><span class="vl">Última</span><span class="vv">${v.latest || 'desconocida'}</span></div>`;
+  if (v.needsUpdate) {
+    return rows + `<div class="vupbtn" onclick="event.stopPropagation();runUpdate('${id}')">⬆ Actualizar ahora</div>`;
+  }
+  return rows + `<div class="vmsg vok">✓ Ya tenés la última versión</div>`;
+}
+
+function renderVersionPanel(id) {
+  const el = document.getElementById(`vexp-${id}`);
+  if (el) el.querySelector('.vexp-in').innerHTML = versionPanelHtml(id);
+}
+
+function toggleExpand(id) {
+  if (expanded.has(id)) {
+    expanded.delete(id);
+    const el = document.getElementById(`vexp-${id}`);
+    if (el) el.classList.remove('open');
+    return;
+  }
+  expanded.add(id);
+  const el = document.getElementById(`vexp-${id}`);
+  if (el) el.classList.add('open');
+  if (!verSt[id] || verSt[id].state === 'idle') checkVersion(id);
+}
+
+async function checkVersion(id) {
+  verSt[id] = { ...(verSt[id] || {}), state: 'checking' };
+  renderVersionPanel(id);
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 35000);
+    const res = await fetch(`http://${cfg.host}:${cfg.restartPort}/version/${id}`, { signal: ctrl.signal, mode: 'cors' });
+    clearTimeout(tid);
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      verSt[id] = {
+        state: 'checked',
+        current: data.current_version,
+        latest: data.latest_version,
+        needsUpdate: !!data.needs_update,
+      };
+    } else {
+      verSt[id] = { state: 'check-error', msg: data.error || `HTTP ${res.status}` };
+    }
+  } catch (e) {
+    verSt[id] = { state: 'check-error', msg: e.name === 'AbortError' ? 'Timeout' : e.message };
+  }
+  renderVersionPanel(id);
+}
+
+async function runUpdate(id) {
+  const prev = verSt[id] || {};
+  verSt[id] = { ...prev, state: 'updating' };
+  renderVersionPanel(id);
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 600000); // hasta 10 min
+    const res = await fetch(`http://${cfg.host}:${cfg.restartPort}/update/${id}`, { signal: ctrl.signal, mode: 'cors' });
+    clearTimeout(tid);
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      verSt[id] = {
+        state: 'update-ok',
+        current: data.current_version || prev.current,
+        latest: data.latest_version || prev.latest,
+      };
+      // re-chequear el estado online del servicio tras la actualizacion
+      const svc = SVCS.find(s => s.id === id);
+      if (svc) setTimeout(() => checkSvc(svc).then(() => { render(); updateSum(); }), 4000);
+    } else {
+      verSt[id] = { state: 'update-error', current: prev.current, latest: prev.latest, msg: data.error || `HTTP ${res.status}` };
+    }
+  } catch (e) {
+    verSt[id] = { state: 'update-error', current: prev.current, latest: prev.latest, msg: e.name === 'AbortError' ? 'Timeout' : e.message };
+  }
+  renderVersionPanel(id);
 }
 
 function updateSum() {
