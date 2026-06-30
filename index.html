@@ -564,8 +564,11 @@ async function checkRestartServer() {
     clearTimeout(tid);
     const ping = Date.now() - t0;
     if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const ver = data.version ? ` · v${data.version}` : ' · v?';
+      const hasUpdate = Array.isArray(data.updatable) && data.updatable.length > 0;
       dot.className = 'sl up'; lbl.className = 'stxt up'; lbl.textContent = 'UP';
-      meta.innerHTML = `Activo <span class="ping f">${ping}ms</span>`;
+      meta.innerHTML = `Activo${ver} <span class="ping f">${ping}ms</span>${!hasUpdate ? ' <span style="color:var(--yellow);font-size:10px">⚠ sin /version</span>' : ''}`;
       card.style.borderColor = 'rgba(63,185,80,.25)';
     } else {
       throw new Error('not ok');
