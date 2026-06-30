@@ -120,7 +120,6 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 .card.expandable{cursor:pointer}
 .card.expandable:active{background:var(--s2)}
 .vexp{max-height:0;overflow:hidden;transition:max-height .25s ease;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);margin-top:-6px;margin-bottom:6px}
-.vexp.open{max-height:160px}
 .vexp-in{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .vrow{display:flex;align-items:center;justify-content:space-between;font-size:12px}
 .vrow .vl{color:var(--muted)}
@@ -327,6 +326,12 @@ function render() {
       </div>
       ${s.updatable ? `<div class="vexp ${isOpen ? 'open' : ''}" id="vexp-${s.id}"><div class="vexp-in">${versionPanelHtml(s.id)}</div></div>` : ''}`;
   });
+  // Restaurar la altura real de los paneles que ya estaban abiertos (el
+  // render() recrea los nodos del DOM, así que pierden el inline style).
+  expanded.forEach(id => {
+    const el = document.getElementById(`vexp-${id}`);
+    if (el) el.style.maxHeight = el.scrollHeight + 'px';
+  });
 }
 
 function versionPanelHtml(id) {
@@ -368,19 +373,27 @@ function versionPanelHtml(id) {
 
 function renderVersionPanel(id) {
   const el = document.getElementById(`vexp-${id}`);
-  if (el) el.querySelector('.vexp-in').innerHTML = versionPanelHtml(id);
+  if (!el) return;
+  el.querySelector('.vexp-in').innerHTML = versionPanelHtml(id);
+  if (el.classList.contains('open')) {
+    // Recalcular la altura real del contenido (puede cambiar entre
+    // "Verificando..." → resultado, o agregar/quitar el botón de update).
+    el.style.maxHeight = el.scrollHeight + 'px';
+  }
 }
 
 function toggleExpand(id) {
+  const el = document.getElementById(`vexp-${id}`);
   if (expanded.has(id)) {
     expanded.delete(id);
-    const el = document.getElementById(`vexp-${id}`);
-    if (el) el.classList.remove('open');
+    if (el) { el.classList.remove('open'); el.style.maxHeight = '0px'; }
     return;
   }
   expanded.add(id);
-  const el = document.getElementById(`vexp-${id}`);
-  if (el) el.classList.add('open');
+  if (el) {
+    el.classList.add('open');
+    el.style.maxHeight = el.scrollHeight + 'px';
+  }
   if (!verSt[id] || verSt[id].state === 'idle') checkVersion(id);
 }
 
