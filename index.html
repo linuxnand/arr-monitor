@@ -189,7 +189,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
     <div class="cmd-list" id="cmdList"></div>
   </div>
 
-  <footer>ArrMonitor v2.7</footer>
+  <footer id="footer">ArrMonitor</footer>
 </div>
 
 <div class="overlay" id="ov" onclick="if(event.target===this)closeSettings()">
@@ -260,12 +260,20 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'' }
 };
 
+const HTML_VERSION = "2.7";
+
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
 let rst = {}; // estado de reinicios: { svcId: 'restarting'|'ok'|'err' }
 let verSt = {}; // estado de chequeo/actualizacion de version: { svcId: {state, current, latest, needsUpdate, msg} }
 let expanded = new Set(); // ids de servicios con el panel desplegable abierto
 let timer = null;
+let serverVersion = null; // se llena cuando checkRestartServer() recibe respuesta
+
+function updateFooter() {
+  const srv = serverVersion != null ? `srv v${serverVersion}` : 'srv —';
+  document.getElementById('footer').textContent = `ArrMonitor · html v${HTML_VERSION} · ${srv}`;
+}
 
 function load() {
   try {
@@ -565,10 +573,13 @@ async function checkRestartServer() {
     const ping = Date.now() - t0;
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
-      const ver = data.version ? ` · v${data.version}` : ' · v?';
+      const ver = data.version || null;
+      serverVersion = ver;
+      updateFooter();
       const hasUpdate = Array.isArray(data.updatable) && data.updatable.length > 0;
+      const verLabel = ver ? ` · v${ver}` : ' · v?';
       dot.className = 'sl up'; lbl.className = 'stxt up'; lbl.textContent = 'UP';
-      meta.innerHTML = `Activo${ver} <span class="ping f">${ping}ms</span>${!hasUpdate ? ' <span style="color:var(--yellow);font-size:10px">⚠ sin /version</span>' : ''}`;
+      meta.innerHTML = `Activo${verLabel} <span class="ping f">${ping}ms</span>${!hasUpdate ? ' <span style="color:var(--yellow);font-size:10px">⚠ sin /version</span>' : ''}`;
       card.style.borderColor = 'rgba(63,185,80,.25)';
     } else {
       throw new Error('not ok');
@@ -724,6 +735,7 @@ async function runCmd(id) {
 // Init — cargar config guardada (o defaults), arrancar directo
 load();
 render();
+updateFooter();
 checkAll();
 setupAuto();
 </script>
