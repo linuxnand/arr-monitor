@@ -672,6 +672,7 @@ const CMDS = [
   { id:'jd-kill',      name:'JD Kill',       ico:'🛑', desc:'Cerrar JDownloader',              cls:'cnormal' },
   { id:'0j',           name:'0J Organizer',  ico:'📁', desc:'Mover videos e imágenes de 0J',   cls:'cgreen'  },
   { id:'mpv-launch',   name:'MPV',           ico:'▶️',  desc:'Lanzar MPV (para MPV Remote)',    cls:'cnormal' },
+  { id:'disk-v-cycle', name:'Reconectar V:', ico:'💽', desc:'Desconecta y reconecta disco V',  cls:'cnormal' },
   { id:'shutdown',     name:'APAGAR',        ico:'🔴', desc:'Apagar la PC',                    cls:'cdanger', confirm: true },
   { id:'reboot',       name:'Restart',       ico:'🔁', desc:'Reiniciar la PC',                 cls:'cdanger', confirm: true },
 ];
@@ -708,7 +709,7 @@ function renderCmds() {
   });
 }
 
-const CMD_TIMEOUTS = { '0j': 320000, 'mpv-launch': 35000 }; // ms — por defecto 20s, 0j hasta 5min, mpv-launch 35s (kill+10s+arranque)
+const CMD_TIMEOUTS = { '0j': 320000, 'mpv-launch': 35000, 'disk-v-cycle': 27000 }; // ms — por defecto 20s, 0j hasta 5min, mpv-launch 35s (kill+10s+arranque), disk-v-cycle 27s (offline+espera+online)
 
 async function runCmd(id) {
   const cmd = CMDS.find(c => c.id === id);
