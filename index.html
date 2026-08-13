@@ -173,7 +173,6 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
     <div class="svc-ico" style="background:rgba(88,166,255,.08);font-size:16px">⚙️</div>
     <div class="svc-info">
       <div class="svc-name" style="font-size:13px">Restart Server</div>
-      <div class="svc-url" id="srvUrl">—</div>
       <div class="svc-meta" id="srvMeta">Sin verificar</div>
     </div>
     <div class="sw">
@@ -261,7 +260,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.3";
+const HTML_VERSION = "3.4";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -317,6 +316,11 @@ function render() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg>
         </button>`;
       }
+    } else {
+      // Sin capacidad de reinicio (ej. VueTorrent): reservar el mismo
+      // ancho igual para que el semaforo up/down quede alineado con
+      // el de las demas cards.
+      rbHtml = `<div style="width:38px;flex-shrink:0"></div>`;
     }
     const isOpen = s.updatable && expanded.has(s.id);
     l.innerHTML += `
@@ -565,7 +569,6 @@ async function restartSvc(id) {
 
 async function checkRestartServer() {
   const url = `http://${cfg.host}:${cfg.restartPort}/status`;
-  document.getElementById('srvUrl').textContent = `${cfg.host}:${cfg.restartPort}`;
   const dot = document.getElementById('srvDot');
   const lbl = document.getElementById('srvLbl');
   const meta = document.getElementById('srvMeta');
