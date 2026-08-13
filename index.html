@@ -243,7 +243,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 const SVCS = [
   { id:'radarr',    name:'Radarr',     port:7878, ico:'<img src="https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/Radarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🎬\')">', cls:'ir',  paths:['/api/v3/health','/'],            restart:'radarr', updatable:true },
   { id:'sonarr',    name:'Sonarr',     port:8989, ico:'<img src="https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📺\')">', cls:'iso', paths:['/api/v3/health','/'],            restart:'sonarr', updatable:true },
-  { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'],        restart:'prowlarr' },
+  { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'],        restart:'prowlarr', updatable:true },
   { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'], restart:'autobrr', updatable:true },
   { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed' },
   { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], restart:'qui', updatable:true },
@@ -260,7 +260,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.4";
+const HTML_VERSION = "3.5";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
