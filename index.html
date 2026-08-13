@@ -248,7 +248,7 @@ const SVCS = [
   { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'],        restart:'prowlarr' },
   { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'], restart:'autobrr', updatable:true },
   { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed' },
-  { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], restart:'qui' },
+  { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], restart:'qui', updatable:true },
   { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/bazarr-logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🗣\')">', cls:'ibzr', paths:['/api/system/health','/'], restart:'bazarr' },
 ];
 
@@ -261,7 +261,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'' }
 };
 
-const HTML_VERSION = "3.0";
+const HTML_VERSION = "3.1";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
