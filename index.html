@@ -42,7 +42,6 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .svc-ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;padding:6px;}
 .svc-info{flex:1;min-width:0}
 .svc-name{font-size:14px;font-weight:600;margin-bottom:0;line-height:1.2}
-.svc-url{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .svc-meta{font-size:11px;color:var(--muted);margin-top:0;display:flex;align-items:center;gap:5px;line-height:1.2}
 .sw{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;width:36px}
 .sl{width:13px;height:13px;border-radius:50%}
@@ -57,7 +56,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .stxt.up{color:var(--green)}.stxt.down{color:var(--red)}.stxt.chk{color:var(--yellow)}
 .ping{display:inline-block;font-size:10px;font-family:'JetBrains Mono',monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--muted)}
 .ping.f{color:var(--green);border-color:rgba(63,185,80,.25)}.ping.s{color:var(--yellow);border-color:rgba(210,153,34,.25)}
-.ir{background:rgba(255,193,7,.1)}.iso{background:rgba(33,150,243,.1)}.ipr{background:rgba(156,39,176,.1)}.iau{background:rgba(0,188,212,.1)}.ics{background:rgba(76,175,80,.1)}.ibz{background:rgba(255,152,0,.1)}.ibzr{background:rgba(255,235,59,.08)}
+.ir{background:rgba(255,193,7,.1)}.iso{background:rgba(33,150,243,.1)}.ipr{background:rgba(156,39,176,.1)}.iau{background:rgba(0,188,212,.1)}.ics{background:rgba(76,175,80,.1)}.ibz{background:rgba(255,152,0,.1)}.ibzr{background:rgba(255,235,59,.08)}.ivt{background:rgba(0,150,136,.1)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end}
 .overlay.on{display:flex}
 .sheet{background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:20px 20px 0 0;width:100%;max-height:92dvh;overflow-y:auto;padding-bottom:36px;animation:shUp .3s cubic-bezier(.34,1.56,.64,1)}
@@ -250,6 +249,7 @@ const SVCS = [
   { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed' },
   { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], restart:'qui', updatable:true },
   { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/bazarr-logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🗣\')">', cls:'ibzr', paths:['/api/system/health','/'], restart:'bazarr' },
+  { id:'vuetorrent',name:'VueTorrent', port:22222, fixedHost:'192.168.68.54', ico:'<img src="https://raw.githubusercontent.com/WDaan/VueTorrent/master/public/img/icons/favicon-32x32.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🧲\')">', cls:'ivt', paths:['/'], updatable:true },
 ];
 
 const DEFAULTS = {
@@ -257,11 +257,11 @@ const DEFAULTS = {
   https: false,
   autoRefresh: true,
   restartPort: 9797,
-  ports:   { radarr:7878, sonarr:8989, prowlarr:9696, autobrr:7474, crossseed:2468, qui:7476, bazarr:6767 },
-  apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'' }
+  ports:   { radarr:7878, sonarr:8989, prowlarr:9696, autobrr:7474, crossseed:2468, qui:7476, bazarr:6767, vuetorrent:22222 },
+  apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.1";
+const HTML_VERSION = "3.3";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -324,7 +324,6 @@ function render() {
         <div class="svc-ico ${s.cls}">${s.ico}</div>
         <div class="svc-info">
           <div class="svc-name">${s.name}</div>
-          <div class="svc-url">${base(s)}</div>
           <div class="svc-meta">${x.msg || ''} ${pb}</div>
         </div>
         <div class="sw">
@@ -452,11 +451,21 @@ async function runUpdate(id) {
       if (svc) setTimeout(() => checkSvc(svc).then(() => { render(); updateSum(); }), 4000);
     } else {
       verSt[id] = { state: 'update-error', current: prev.current, latest: prev.latest, msg: data.error || `HTTP ${res.status}` };
+      scheduleSelfHeal(id);
     }
   } catch (e) {
     verSt[id] = { state: 'update-error', current: prev.current, latest: prev.latest, msg: e.name === 'AbortError' ? 'Timeout' : e.message };
+    // El fetch pudo haber fallado del lado del celular (pantalla bloqueada,
+    // app en 2do plano, wifi cortado) mientras la actualizacion en la PC
+    // seguia corriendo y terminaba bien. Reconsultamos sola en unos segundos
+    // para autocorregir el estado sin que haya que cerrar y reabrir la app.
+    scheduleSelfHeal(id);
   }
   renderVersionPanel(id);
+}
+
+function scheduleSelfHeal(id) {
+  setTimeout(() => { if (verSt[id]?.state === 'update-error') checkVersion(id); }, 8000);
 }
 
 function updateSum() {
@@ -732,6 +741,18 @@ async function runCmd(id) {
   renderCmds();
   setTimeout(() => { delete cmdSt[id]; renderCmds(); }, 4000);
 }
+
+// Si el celular suspendió la pestaña/app durante una actualización larga
+// (pantalla bloqueada, app minimizada), al volver a primer plano
+// reconsultamos todo para reflejar el estado real del servidor.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  checkAll();
+  Object.keys(verSt).forEach(id => {
+    const s = verSt[id]?.state;
+    if (s === 'updating' || s === 'update-error' || s === 'check-error') checkVersion(id);
+  });
+});
 
 // Init — cargar config guardada (o defaults), arrancar directo
 load();
