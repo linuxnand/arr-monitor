@@ -56,7 +56,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .stxt.up{color:var(--green)}.stxt.down{color:var(--red)}.stxt.chk{color:var(--yellow)}
 .ping{display:inline-block;font-size:10px;font-family:'JetBrains Mono',monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--muted)}
 .ping.f{color:var(--green);border-color:rgba(63,185,80,.25)}.ping.s{color:var(--yellow);border-color:rgba(210,153,34,.25)}
-.ir{background:rgba(255,193,7,.1)}.iso{background:rgba(33,150,243,.1)}.ipr{background:rgba(156,39,176,.1)}.iau{background:rgba(0,188,212,.1)}.ics{background:rgba(76,175,80,.1)}.ibz{background:rgba(255,152,0,.1)}.ibzr{background:rgba(255,235,59,.08)}.ivt{background:rgba(0,150,136,.1)}
+.ir{background:rgba(255,193,7,.1)}.iso{background:rgba(33,150,243,.1)}.ipr{background:rgba(156,39,176,.1)}.iau{background:rgba(0,188,212,.1)}.ics{background:rgba(76,175,80,.1)}.ibz{background:rgba(255,152,0,.1)}.ibzr{background:rgba(255,235,59,.08)}.ivt{background:rgba(0,150,136,.1)}.iqbt{background:rgba(96,125,139,.14)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end}
 .overlay.on{display:flex}
 .sheet{background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:20px 20px 0 0;width:100%;max-height:92dvh;overflow-y:auto;padding-bottom:36px;animation:shUp .3s cubic-bezier(.34,1.56,.64,1)}
@@ -168,19 +168,6 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
   </div>
 
   <div class="list" id="list"></div>
-
-  <div class="card" id="srvCard" style="opacity:.7;margin-bottom:12px">
-    <div class="svc-ico" style="background:rgba(88,166,255,.08);font-size:16px">⚙️</div>
-    <div class="svc-info">
-      <div class="svc-name" style="font-size:13px">Restart Server</div>
-      <div class="svc-meta" id="srvMeta">Sin verificar</div>
-    </div>
-    <div class="sw">
-      <div class="sl idle" id="srvDot"></div>
-      <div class="stxt" id="srvLbl">—</div>
-    </div>
-    <div style="width:38px;flex-shrink:0"></div>
-  </div>
   </div><!-- /pane-monitor -->
 
   <!-- Tab: Comandos -->
@@ -248,6 +235,7 @@ const SVCS = [
   { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed' },
   { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], restart:'qui', updatable:true },
   { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/bazarr-logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🗣\')">', cls:'ibzr', paths:['/api/system/health','/'], restart:'bazarr' },
+  { id:'qbittorrent',name:'qBittorrent', port:22222, fixedHost:'192.168.68.54', ico:'<img src="https://upload.wikimedia.org/wikipedia/commons/3/3f/QBittorrent_Logo.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📥\')">', cls:'iqbt', paths:['/api/v2/app/version','/'], updatable:true },
   { id:'vuetorrent',name:'VueTorrent', port:22222, fixedHost:'192.168.68.54', ico:'<img src="https://raw.githubusercontent.com/WDaan/VueTorrent/master/public/img/icons/favicon-32x32.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🧲\')">', cls:'ivt', paths:['/'], updatable:true },
 ];
 
@@ -256,11 +244,11 @@ const DEFAULTS = {
   https: false,
   autoRefresh: true,
   restartPort: 9797,
-  ports:   { radarr:7878, sonarr:8989, prowlarr:9696, autobrr:7474, crossseed:2468, qui:7476, bazarr:6767, vuetorrent:22222 },
-  apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', vuetorrent:'' }
+  ports:   { radarr:7878, sonarr:8989, prowlarr:9696, autobrr:7474, crossseed:2468, qui:7476, bazarr:6767, qbittorrent:22222, vuetorrent:22222 },
+  apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.5";
+const HTML_VERSION = "3.6";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -568,39 +556,23 @@ async function restartSvc(id) {
 }
 
 async function checkRestartServer() {
+  // Ya no se muestra como card propia (no tenía mucho sentido como
+  // "servicio" aparte): solo se usa para completar la versión del
+  // servidor de restart/update que aparece en el footer.
   const url = `http://${cfg.host}:${cfg.restartPort}/status`;
-  const dot = document.getElementById('srvDot');
-  const lbl = document.getElementById('srvLbl');
-  const meta = document.getElementById('srvMeta');
-  const card = document.getElementById('srvCard');
-
-  dot.className = 'sl chk'; lbl.className = 'stxt chk'; lbl.textContent = '···';
-  meta.textContent = 'Verificando...'; card.style.opacity = '1';
-
   try {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 5000);
-    const t0 = Date.now();
     const res = await fetch(url, { signal: ctrl.signal, mode: 'cors', cache: 'no-store' });
     clearTimeout(tid);
-    const ping = Date.now() - t0;
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
-      const ver = data.version || null;
-      serverVersion = ver;
+      serverVersion = data.version || null;
       updateFooter();
-      const hasUpdate = Array.isArray(data.updatable) && data.updatable.length > 0;
-      const verLabel = ver ? ` · v${ver}` : ' · v?';
-      dot.className = 'sl up'; lbl.className = 'stxt up'; lbl.textContent = 'UP';
-      meta.innerHTML = `Activo${verLabel} <span class="ping f">${ping}ms</span>${!hasUpdate ? ' <span style="color:var(--yellow);font-size:10px">⚠ sin /version</span>' : ''}`;
-      card.style.borderColor = 'rgba(63,185,80,.25)';
-    } else {
-      throw new Error('not ok');
     }
   } catch(e) {
-    dot.className = 'sl down'; lbl.className = 'stxt down'; lbl.textContent = 'DOWN';
-    meta.textContent = e.name === 'AbortError' ? 'Timeout' : 'No accesible';
-    card.style.borderColor = 'rgba(248,81,73,.25)';
+    // Silencioso: si el server de restart/update no responde, los
+    // servicios individuales igual se siguen chequeando normalmente.
   }
 }
 
