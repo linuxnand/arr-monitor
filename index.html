@@ -138,6 +138,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
   <!-- Top bar: tabs + settings -->
   <div class="tabs">
     <div class="tab active" id="tab-monitor" onclick="switchTab('monitor')">📡 ArrMonitor</div>
+    <div class="tab" id="tab-irc" onclick="switchTab('irc')">💬 IRC</div>
     <div class="tab" id="tab-cmds" onclick="switchTab('cmds')">⚡ Comandos</div>
     <div class="btn-icon" onclick="openSettings()" title="Configuración" style="flex-shrink:0;margin-left:2px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -173,6 +174,30 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
   <!-- Tab: Comandos -->
   <div class="tab-pane" id="pane-cmds">
     <div class="cmd-list" id="cmdList"></div>
+  </div>
+
+  <!-- Tab: IRC (autobrr) -->
+  <div class="tab-pane" id="pane-irc">
+    <div class="summary">
+      <div>
+        <div class="s-label">Redes IRC (autobrr)</div>
+        <div class="s-count">
+          <span class="up" id="ircUpCount">—</span><span class="sep">/</span><span class="tot" id="ircTotCount">—</span>
+          <span style="font-size:12px;color:var(--muted)"> saludables</span>
+        </div>
+        <div class="last" id="ircLastCheck">Verificando...</div>
+      </div>
+      <button class="rbtn" id="ircRbtn" onclick="checkIrc()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/>
+        </svg>
+        Verificar
+      </button>
+    </div>
+    <div class="list" id="ircList"></div>
+    <div class="slbl" style="margin:14px 0 8px">Historial de reconexiones</div>
+    <div class="cmd-list" id="ircEvents"></div>
   </div>
 
   <footer id="footer">ArrMonitor</footer>
@@ -248,7 +273,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.6";
+const HTML_VERSION = "3.7";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -586,7 +611,10 @@ async function checkAll() {
 
 function setupAuto() {
   if (timer) clearInterval(timer);
-  if (cfg.autoRefresh) timer = setInterval(checkAll, 60000);
+  if (cfg.autoRefresh) timer = setInterval(() => {
+    checkAll();
+    fetchIrcStatus().then(() => { fetchIrcEvents().then(renderIrc); });
+  }, 60000);
 }
 
 function buildSvcFields() {
@@ -642,11 +670,12 @@ function saveSettings() {
 
 // ── Tab switching ──────────────────────────────────────
 function switchTab(name) {
-  ['monitor','cmds'].forEach(t => {
+  ['monitor','cmds','irc'].forEach(t => {
     document.getElementById('tab-' + t).classList.toggle('active', t === name);
     document.getElementById('pane-' + t).classList.toggle('active', t === name);
   });
   if (name === 'cmds') renderCmds();
+  if (name === 'irc') checkIrc();
 }
 
 // ── Comandos ───────────────────────────────────────────
@@ -717,6 +746,149 @@ async function runCmd(id) {
   setTimeout(() => { delete cmdSt[id]; renderCmds(); }, 4000);
 }
 
+// ── IRC (autobrr) ──────────────────────────────────────
+// Todo esto lee del servidor de restart/update (arrmonitor_server.py),
+// que es el que efectivamente consulta autobrr en segundo plano, decide
+// si una red esta "no saludable" y la reinicia sola. Aca solo mostramos
+// ese estado + el historial de reconexiones, y damos un boton para
+// forzar un reinicio manual si hace falta.
+let ircSt = { networks: [], monitorEnabled: null, lastCheck: null, lastError: null };
+let ircRestartingId = null;
+
+function ircUrl(path) {
+  return `http://${cfg.host}:${cfg.restartPort}${path}`;
+}
+
+async function checkIrc() {
+  const b = document.getElementById('ircRbtn');
+  if (b) { b.classList.add('spin'); b.disabled = true; }
+  await Promise.all([fetchIrcStatus(), fetchIrcEvents()]);
+  renderIrc();
+  if (b) { b.classList.remove('spin'); b.disabled = false; }
+}
+
+async function fetchIrcStatus() {
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(ircUrl('/irc/status'), { signal: ctrl.signal, mode: 'cors', cache: 'no-store' });
+    clearTimeout(tid);
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      ircSt.networks = data.networks || [];
+      ircSt.monitorEnabled = data.monitor_enabled;
+      ircSt.lastCheck = data.last_check;
+      ircSt.lastError = data.last_error;
+    } else {
+      ircSt.lastError = data.error || `HTTP ${res.status}`;
+    }
+  } catch (e) {
+    ircSt.lastError = e.name === 'AbortError' ? 'Timeout' : e.message;
+  }
+}
+
+let ircEventsCache = [];
+async function fetchIrcEvents() {
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(ircUrl('/irc/events?limit=30'), { signal: ctrl.signal, mode: 'cors', cache: 'no-store' });
+    clearTimeout(tid);
+    const data = await res.json();
+    if (res.ok && data.ok) ircEventsCache = data.events || [];
+  } catch (e) { /* silencioso, el historial no es critico */ }
+}
+
+const IRC_ACTION_LABEL = {
+  'unhealthy':      { txt: 'Detectado como no saludable', ico: '⚠️' },
+  'auto-restart':   { txt: 'Reinicio automático',          ico: '🔁' },
+  'manual-restart': { txt: 'Reinicio manual',              ico: '🖐️' },
+  'restart-error':  { txt: 'Error al reiniciar',           ico: '❌' },
+  'recovered':      { txt: 'Se recuperó',                  ico: '✅' },
+};
+
+function renderIrc() {
+  const l = document.getElementById('ircList');
+  const nets = ircSt.networks || [];
+  const up = nets.filter(n => n.enabled !== false && n.healthy === true).length;
+  const tot = nets.filter(n => n.enabled !== false).length;
+  document.getElementById('ircUpCount').textContent = tot > 0 ? up : '—';
+  document.getElementById('ircTotCount').textContent = tot > 0 ? tot : '—';
+
+  if (ircSt.monitorEnabled === false) {
+    document.getElementById('ircLastCheck').textContent = 'Monitor apagado: falta AUTOBRR_APIKEY en arrmonitor_server.py';
+  } else if (ircSt.lastError) {
+    document.getElementById('ircLastCheck').textContent = `Error: ${ircSt.lastError}`;
+  } else if (ircSt.lastCheck) {
+    document.getElementById('ircLastCheck').textContent = `Última: ${ircSt.lastCheck}`;
+  } else {
+    document.getElementById('ircLastCheck').textContent = 'Verificando...';
+  }
+
+  if (!nets.length) {
+    l.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">Sin datos todavía</div><div class="svc-meta">Verificá que arrmonitor_server.py esté corriendo y tenga la API key de autobrr cargada.</div></div></div>`;
+  } else {
+    l.innerHTML = '';
+    nets.forEach((n, i) => {
+      const disabled = n.enabled === false;
+      const lc = disabled ? 'idle' : (n.healthy === true ? 'up' : n.healthy === false ? 'down' : 'chk');
+      const lbl = disabled ? 'OFF' : (n.healthy === true ? 'OK' : n.healthy === false ? 'FALLA' : '···');
+      const cc = disabled ? '' : (n.healthy === true ? 'sup' : n.healthy === false ? 'sdown' : 'schk');
+      const meta = disabled ? 'Red deshabilitada en autobrr' : (n.healthy === true ? 'Conectada y saludable' : n.healthy === false ? 'No saludable — reconectando' : 'Estado desconocido');
+      const spinning = ircRestartingId === n.id;
+      const rbtn = disabled ? `<div style="width:38px;flex-shrink:0"></div>` : (spinning
+        ? `<button class="rbtn-svc spin" disabled onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg></button>`
+        : `<button class="rbtn-svc" onclick="event.stopPropagation();restartIrcNetwork(${n.id}, '${(n.name||'').replace(/'/g, "\\'")}')" title="Reiniciar ${n.name || ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg></button>`);
+      l.innerHTML += `
+        <div class="card ${cc}" style="animation-delay:${i * .05}s">
+          <div class="svc-ico" style="background:rgba(88,166,255,.08)">💬</div>
+          <div class="svc-info">
+            <div class="svc-name">${n.name || ('Red ' + n.id)}</div>
+            <div class="svc-meta">${meta}</div>
+          </div>
+          <div class="sw">
+            <div class="sl ${lc}"></div>
+            <div class="stxt ${lc}">${lbl}</div>
+          </div>
+          ${rbtn}
+        </div>`;
+    });
+  }
+
+  const el = document.getElementById('ircEvents');
+  if (!ircEventsCache.length) {
+    el.innerHTML = `<div class="cmd-card cnormal"><div class="cmd-ico">🕒</div><div class="cmd-info"><div class="cmd-name">Sin eventos todavía</div><div class="cmd-status">Acá van a aparecer las reconexiones automáticas con fecha y hora</div></div></div>`;
+  } else {
+    el.innerHTML = '';
+    ircEventsCache.forEach(ev => {
+      const info = IRC_ACTION_LABEL[ev.action] || { txt: ev.action, ico: 'ℹ️' };
+      const cls = ev.action === 'restart-error' ? 'cdanger' : ev.action === 'recovered' ? 'cgreen' : 'cnormal';
+      el.innerHTML += `
+        <div class="cmd-card ${cls}">
+          <div class="cmd-ico">${info.ico}</div>
+          <div class="cmd-info">
+            <div class="cmd-name">${ev.network || ''} — ${info.txt}</div>
+            <div class="cmd-status">${ev.ts || ''}${ev.detail ? ' · ' + ev.detail : ''}</div>
+          </div>
+        </div>`;
+    });
+  }
+}
+
+async function restartIrcNetwork(id, name) {
+  if (!confirm(`¿Reiniciar la red IRC "${name}"?`)) return;
+  ircRestartingId = id;
+  renderIrc();
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 15000);
+    await fetch(ircUrl(`/irc/restart/${id}`), { signal: ctrl.signal, mode: 'cors' });
+    clearTimeout(tid);
+  } catch (e) { /* el resultado se refleja igual en el proximo chequeo */ }
+  ircRestartingId = null;
+  setTimeout(checkIrc, 2500);
+}
+
 // Si el celular suspendió la pestaña/app durante una actualización larga
 // (pantalla bloqueada, app minimizada), al volver a primer plano
 // reconsultamos todo para reflejar el estado real del servidor.
@@ -734,6 +906,7 @@ load();
 render();
 updateFooter();
 checkAll();
+fetchIrcStatus().then(() => { fetchIrcEvents().then(renderIrc); });
 setupAuto();
 </script>
 </body>
