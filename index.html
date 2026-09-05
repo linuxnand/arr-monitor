@@ -32,6 +32,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .rbtn:active{background:rgba(88,166,255,.15)}
 .rbtn svg{width:14px;height:14px}
 .rbtn.spin svg{animation:spin 1s linear infinite}
+.rbtn.active{background:rgba(63,185,80,.18);border-color:rgba(63,185,80,.45);color:var(--green)}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:7px 12px;display:flex;align-items:center;gap:10px;transition:border-color .3s,box-shadow .3s;animation:fadeUp .4s ease both}
@@ -219,6 +220,10 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
         </svg>
         Verificar
       </button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="rbtn" id="relFilterBtn" style="padding:7px 12px;font-size:12px" onclick="toggleRelFilter()">✅ Solo aprobados</button>
+      <button class="rbtn" id="relDebugBtn" style="padding:7px 12px;font-size:12px" onclick="toggleRelDebug()">🐞 Debug</button>
     </div>
     <div class="list" id="relList"></div>
     <div style="display:flex;gap:8px;margin-top:4px">
@@ -928,6 +933,9 @@ let relOffset = 0;
 const relPageSize = 10;
 let relLoaded = false;
 let relTotal = null; // total de registros, si autobrr lo informa
+let relRawItems = [];  // ultima pagina recibida de autobrr, sin filtrar
+let relOnlyApproved = localStorage.getItem('relOnlyApproved') === '1';
+let relDebug = localStorage.getItem('relDebug') === '1';
 
 function relFmtAge(tsStr) {
   if (!tsStr) return '';
@@ -966,8 +974,9 @@ const REL_STATUS = {
   PUSH_REJECTED: { lc:'down', lbl:'RECHAZADO', cc:'sdown' },
   PUSH_ERROR:    { lc:'chk',  lbl:'ERROR',     cc:'schk'  },
 };
+const REL_IDLE = { lc:'idle', lbl:'—', cc:'' };
 function relStatusFor(val) {
-  // autobrr puede mandar push_status como string simple, con distinta
+  // autobrr puede mandar el estado como string simple, con distinta
   // capitalización, o (en algunas versiones/endpoints) anidado en un
   // objeto. Normalizamos y probamos varias formas antes de rendirnos.
   let raw = val;
@@ -978,6 +987,103 @@ function relStatusFor(val) {
   if (/REJECT/.test(key)) return REL_STATUS.PUSH_REJECTED;
   if (/ERROR/.test(key)) return REL_STATUS.PUSH_ERROR;
   return { lc:'idle', lbl: key || '—', cc:'' };
+}
+// Segun la version de autobrr, el estado del push puede venir como campo
+// plano ("push_status" o "status") o, en versiones mas nuevas, adentro de
+// un array "action_status" con el resultado de cada accion disparada por
+// el filtro (una release puede tener varias acciones). Probamos todas las
+// formas conocidas antes de rendirnos a "idle".
+function relStatusForItem(it) {
+  if (!it || typeof it !== 'object') return REL_IDLE;
+  let st = relStatusFor(it.push_status);
+  if (st.lc !== 'idle') return st;
+  st = relStatusFor(it.status);
+  if (st.lc !== 'idle') return st;
+  if (Array.isArray(it.action_status) && it.action_status.length) {
+    const statuses = it.action_status.map(a => relStatusFor(a && (a.status ?? a)));
+    if (statuses.some(s => s.lc === 'up'))   return REL_STATUS.PUSH_APPROVED;
+    if (statuses.some(s => s.lc === 'down')) return REL_STATUS.PUSH_REJECTED;
+    if (statuses.some(s => s.lc === 'chk'))  return REL_STATUS.PUSH_ERROR;
+  }
+  return REL_IDLE;
+}
+// Junta, para el modo debug, todos los campos "crudos" relacionados al
+// estado que encontramos en el item tal cual los manda autobrr.
+function relRawStatusValues(it) {
+  const vals = [];
+  if (!it || typeof it !== 'object') return vals;
+  if (it.push_status !== undefined) vals.push(`push_status: ${JSON.stringify(it.push_status)}`);
+  if (it.status !== undefined) vals.push(`status: ${JSON.stringify(it.status)}`);
+  if (it.filter_status !== undefined) vals.push(`filter_status: ${JSON.stringify(it.filter_status)}`);
+  if (Array.isArray(it.action_status)) {
+    it.action_status.forEach((a, idx) => {
+      vals.push(`action_status[${idx}].status: ${JSON.stringify(a && a.status)}`);
+    });
+  }
+  return vals;
+}
+
+function updateRelToggleButtons() {
+  const fb = document.getElementById('relFilterBtn');
+  const db = document.getElementById('relDebugBtn');
+  if (fb) fb.classList.toggle('active', relOnlyApproved);
+  if (db) db.classList.toggle('active', relDebug);
+}
+
+function toggleRelFilter() {
+  relOnlyApproved = !relOnlyApproved;
+  try { localStorage.setItem('relOnlyApproved', relOnlyApproved ? '1' : '0'); } catch(e) {}
+  updateRelToggleButtons();
+  renderReleaseList();
+}
+
+function toggleRelDebug() {
+  relDebug = !relDebug;
+  try { localStorage.setItem('relDebug', relDebug ? '1' : '0'); } catch(e) {}
+  updateRelToggleButtons();
+  renderReleaseList();
+}
+
+function renderReleaseList() {
+  const list = document.getElementById('relList');
+  if (!list) return;
+  const items = relOnlyApproved
+    ? relRawItems.filter(it => relStatusForItem(it).lbl === 'APROBADO')
+    : relRawItems;
+
+  if (!items.length) {
+    const msg = relOnlyApproved && relRawItems.length
+      ? 'Ningún lanzamiento aprobado en esta página'
+      : `No hay lanzamientos${relOffset > 0 ? ' en esta página' : ''}`;
+    list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">${msg}</div></div></div>`;
+    return;
+  }
+
+  list.innerHTML = '';
+  items.forEach((it, i) => {
+    const st = relStatusForItem(it);
+    const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
+    const filterName = relFieldName(it.filter);
+    const meta = `${filterName}${reason ? (filterName ? ' · ' : '') + reason : ''}`;
+    const debugVals = relDebug ? relRawStatusValues(it) : [];
+    const debugLine = relDebug
+      ? `<div class="svc-meta" style="font-family:'JetBrains Mono',monospace;font-size:10px;opacity:.75;word-break:break-all">${(debugVals.join(' | ') || 'sin campos de estado en el item').replace(/</g,'&lt;')}</div>`
+      : '';
+    list.innerHTML += `
+      <div class="card ${st.cc}" style="animation-delay:${i * .03}s">
+        <div style="width:30px;flex-shrink:0;text-align:center;font-size:11px;font-weight:600;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtAge(it.timestamp)}</div>
+        <div class="svc-info">
+          <div class="svc-name">${(it.title || it.torrent_name || 'Lanzamiento').replace(/</g,'&lt;')}</div>
+          <div class="svc-meta">${meta.replace(/</g,'&lt;')}</div>
+          ${debugLine}
+        </div>
+        <div class="sw">
+          <div class="sl ${st.lc}"></div>
+          <div class="stxt ${st.lc}" style="font-size:8px">${st.lbl}</div>
+        </div>
+        <div style="width:42px;flex-shrink:0;display:flex;justify-content:flex-end"><span class="ping">${relIndexerAbbrev(it.indexer)}</span></div>
+      </div>`;
+  });
 }
 
 async function loadReleases(offset) {
@@ -1001,37 +1107,16 @@ async function loadReleases(offset) {
     const items = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
     relTotal = (typeof raw.count === 'number') ? raw.count : ((typeof raw.total_count === 'number') ? raw.total_count : null);
     relOffset = offset;
+    relRawItems = items;
 
-    const approved = items.filter(it => relStatusFor(it.push_status).lbl === 'APROBADO').length;
+    const approved = items.filter(it => relStatusForItem(it).lbl === 'APROBADO').length;
     document.getElementById('relApproved').textContent = items.length ? approved : '—';
     document.getElementById('relShown').textContent = items.length ? items.length : '—';
     const rangeLbl = items.length ? `Mostrando ${offset + 1}–${offset + items.length}${relTotal != null ? ' de ' + relTotal : ''}` : 'Sin resultados';
     document.getElementById('relLastCheck').textContent = rangeLbl;
 
-    if (!items.length) {
-      list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">No hay lanzamientos${offset > 0 ? ' en esta página' : ''}</div></div></div>`;
-    } else {
-      list.innerHTML = '';
-      items.forEach((it, i) => {
-        const st = relStatusFor(it.push_status);
-        const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
-        const filterName = relFieldName(it.filter);
-        const meta = `${filterName}${reason ? (filterName ? ' · ' : '') + reason : ''}`;
-        list.innerHTML += `
-          <div class="card ${st.cc}" style="animation-delay:${i * .03}s">
-            <div style="width:30px;flex-shrink:0;text-align:center;font-size:11px;font-weight:600;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtAge(it.timestamp)}</div>
-            <div class="svc-info">
-              <div class="svc-name">${(it.title || it.torrent_name || 'Lanzamiento').replace(/</g,'&lt;')}</div>
-              <div class="svc-meta">${meta.replace(/</g,'&lt;')}</div>
-            </div>
-            <div class="sw">
-              <div class="sl ${st.lc}"></div>
-              <div class="stxt ${st.lc}" style="font-size:8px">${st.lbl}</div>
-            </div>
-            <div style="width:42px;flex-shrink:0;display:flex;justify-content:flex-end"><span class="ping">${relIndexerAbbrev(it.indexer)}</span></div>
-          </div>`;
-      });
-    }
+    updateRelToggleButtons();
+    renderReleaseList();
 
     document.getElementById('relPrev').disabled = offset <= 0;
     document.getElementById('relNext').disabled = relTotal != null ? (offset + items.length >= relTotal) : (items.length < relPageSize);
@@ -1058,6 +1143,7 @@ document.addEventListener('visibilitychange', () => {
 // Init — cargar config guardada (o defaults), arrancar directo
 load();
 render();
+updateRelToggleButtons();
 updateFooter();
 checkAll();
 fetchIrcStatus().then(() => { fetchIrcEvents().then(renderIrc); });
