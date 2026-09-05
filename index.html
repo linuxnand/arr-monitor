@@ -139,6 +139,7 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
   <div class="tabs">
     <div class="tab active" id="tab-monitor" onclick="switchTab('monitor')">📡 ArrMonitor</div>
     <div class="tab" id="tab-irc" onclick="switchTab('irc')">💬 IRC</div>
+    <div class="tab" id="tab-rel" onclick="switchTab('rel')">🧾 Releases</div>
     <div class="tab" id="tab-cmds" onclick="switchTab('cmds')">⚡ Comandos</div>
     <div class="btn-icon" onclick="openSettings()" title="Configuración" style="flex-shrink:0;margin-left:2px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -198,6 +199,32 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
     <div class="list" id="ircList"></div>
     <div class="slbl" style="margin:14px 0 8px">Historial de reconexiones</div>
     <div class="cmd-list" id="ircEvents"></div>
+  </div>
+
+  <!-- Tab: Lanzamientos (autobrr) -->
+  <div class="tab-pane" id="pane-rel">
+    <div class="summary">
+      <div>
+        <div class="s-label">Lanzamientos (autobrr)</div>
+        <div class="s-count">
+          <span class="up" id="relApproved">—</span><span class="sep">/</span><span class="tot" id="relShown">—</span>
+          <span style="font-size:12px;color:var(--muted)"> aprobados</span>
+        </div>
+        <div class="last" id="relLastCheck">Verificando...</div>
+      </div>
+      <button class="rbtn" id="relRbtn" onclick="loadReleases(relOffset)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/>
+        </svg>
+        Verificar
+      </button>
+    </div>
+    <div class="list" id="relList"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="rbtn" style="flex:1;justify-content:center" id="relPrev" onclick="loadReleases(Math.max(0, relOffset - relPageSize))">‹ Anteriores</button>
+      <button class="rbtn" style="flex:1;justify-content:center" id="relNext" onclick="loadReleases(relOffset + relPageSize)">Siguientes ›</button>
+    </div>
   </div>
 
   <footer id="footer">ArrMonitor</footer>
@@ -273,7 +300,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.7";
+const HTML_VERSION = "3.8";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -670,12 +697,13 @@ function saveSettings() {
 
 // ── Tab switching ──────────────────────────────────────
 function switchTab(name) {
-  ['monitor','cmds','irc'].forEach(t => {
+  ['monitor','cmds','irc','rel'].forEach(t => {
     document.getElementById('tab-' + t).classList.toggle('active', t === name);
     document.getElementById('pane-' + t).classList.toggle('active', t === name);
   });
   if (name === 'cmds') renderCmds();
   if (name === 'irc') checkIrc();
+  if (name === 'rel' && !relLoaded) loadReleases(0);
 }
 
 // ── Comandos ───────────────────────────────────────────
@@ -887,6 +915,103 @@ async function restartIrcNetwork(id, name) {
   } catch (e) { /* el resultado se refleja igual en el proximo chequeo */ }
   ircRestartingId = null;
   setTimeout(checkIrc, 2500);
+}
+
+// ── Lanzamientos / Release history (autobrr) ───────────
+// Lee directo de la API de autobrr (igual que el chequeo de salud de los
+// demas servicios), usando la API key que ya configuraste para autobrr
+// en Configuración. push_status: PUSH_APPROVED (verde), PUSH_REJECTED
+// (rojo), PUSH_ERROR (amarillo). "rejections" trae el motivo del rechazo.
+let relOffset = 0;
+const relPageSize = 10;
+let relLoaded = false;
+let relTotal = null; // total de registros, si autobrr lo informa
+
+function relApikey() {
+  return cfg.apikeys.autobrr;
+}
+
+function relFmtDate(tsStr) {
+  if (!tsStr) return '';
+  const d = new Date(tsStr);
+  if (isNaN(d)) return tsStr;
+  return d.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+const REL_STATUS = {
+  PUSH_APPROVED: { lc:'up',   lbl:'APROBADO', cc:'sup'   },
+  PUSH_REJECTED: { lc:'down', lbl:'RECHAZADO', cc:'sdown' },
+  PUSH_ERROR:    { lc:'chk',  lbl:'ERROR',     cc:'schk'  },
+};
+
+async function loadReleases(offset) {
+  relLoaded = true;
+  if (offset < 0) offset = 0;
+  const apikey = relApikey();
+  const b = document.getElementById('relRbtn');
+  if (b) { b.classList.add('spin'); b.disabled = true; }
+  const list = document.getElementById('relList');
+
+  if (!apikey) {
+    document.getElementById('relLastCheck').textContent = 'Falta la API key de autobrr (Configuración → Autobrr)';
+    list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">Configurá la API key de autobrr</div><div class="svc-meta">Ajustes ⚙️ → Servicios → Autobrr → API Key</div></div></div>`;
+    if (b) { b.classList.remove('spin'); b.disabled = false; }
+    return;
+  }
+
+  try {
+    const svc = SVCS.find(s => s.id === 'autobrr');
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 10000);
+    const res = await fetch(
+      `${base(svc)}/api/release?limit=${relPageSize}&offset=${offset}`,
+      { signal: ctrl.signal, mode: 'cors', cache: 'no-store', headers: { 'X-API-Token': apikey } }
+    );
+    clearTimeout(tid);
+    const raw = await res.json();
+    if (!res.ok) throw new Error(raw?.message || `HTTP ${res.status}`);
+
+    const items = Array.isArray(raw) ? raw : (raw.data || []);
+    relTotal = (typeof raw.count === 'number') ? raw.count : ((typeof raw.total_count === 'number') ? raw.total_count : null);
+    relOffset = offset;
+
+    const approved = items.filter(it => it.push_status === 'PUSH_APPROVED').length;
+    document.getElementById('relApproved').textContent = items.length ? approved : '—';
+    document.getElementById('relShown').textContent = items.length ? items.length : '—';
+    const rangeLbl = items.length ? `Mostrando ${offset + 1}–${offset + items.length}${relTotal != null ? ' de ' + relTotal : ''}` : 'Sin resultados';
+    document.getElementById('relLastCheck').textContent = rangeLbl;
+
+    if (!items.length) {
+      list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">No hay lanzamientos${offset > 0 ? ' en esta página' : ''}</div></div></div>`;
+    } else {
+      list.innerHTML = '';
+      items.forEach((it, i) => {
+        const st = REL_STATUS[it.push_status] || { lc:'idle', lbl: it.push_status || '—', cc:'' };
+        const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
+        const meta = `${it.indexer || ''}${it.filter ? ' · ' + it.filter : ''}${reason ? ' · ' + reason : ''}`;
+        list.innerHTML += `
+          <div class="card ${st.cc}" style="animation-delay:${i * .03}s">
+            <div class="svc-ico" style="background:rgba(88,166,255,.08)">🧾</div>
+            <div class="svc-info">
+              <div class="svc-name">${(it.title || it.torrent_name || 'Lanzamiento').replace(/</g,'&lt;')}</div>
+              <div class="svc-meta">${meta.replace(/</g,'&lt;')}</div>
+            </div>
+            <div class="sw">
+              <div class="sl ${st.lc}"></div>
+              <div class="stxt ${st.lc}" style="font-size:8px">${st.lbl}</div>
+            </div>
+            <div style="width:38px;flex-shrink:0;text-align:right;font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtDate(it.timestamp)}</div>
+          </div>`;
+      });
+    }
+
+    document.getElementById('relPrev').disabled = offset <= 0;
+    document.getElementById('relNext').disabled = relTotal != null ? (offset + items.length >= relTotal) : (items.length < relPageSize);
+  } catch (e) {
+    document.getElementById('relLastCheck').textContent = `Error: ${e.name === 'AbortError' ? 'Timeout' : e.message}`;
+    list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">No se pudo consultar autobrr</div><div class="svc-meta">${(e.message||'').replace(/</g,'&lt;')}</div></div></div>`;
+  }
+  if (b) { b.classList.remove('spin'); b.disabled = false; }
 }
 
 // Si el celular suspendió la pestaña/app durante una actualización larga
