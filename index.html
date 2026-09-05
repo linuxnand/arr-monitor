@@ -300,7 +300,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.11";
+const HTML_VERSION = "3.12";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -943,7 +943,16 @@ function relFmtAge(tsStr) {
 const REL_INDEXER_OVERRIDES = {
   aither: 'ATH', beyondhd: 'BHD', alpharatio: 'ALP', digitalcore: 'DGC', digitalirc: 'DIG',
 };
-function relIndexerAbbrev(name) {
+function relFieldName(val) {
+  // autobrr a veces devuelve indexer/filter como string y otras veces
+  // como objeto {id, name, identifier, ...} segun el endpoint/version.
+  if (val == null) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') return val.name || val.identifier || '';
+  return String(val);
+}
+function relIndexerAbbrev(val) {
+  const name = relFieldName(val);
   if (!name) return '—';
   const key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
   if (REL_INDEXER_OVERRIDES[key]) return REL_INDEXER_OVERRIDES[key];
@@ -993,7 +1002,8 @@ async function loadReleases(offset) {
       items.forEach((it, i) => {
         const st = REL_STATUS[it.push_status] || { lc:'idle', lbl: it.push_status || '—', cc:'' };
         const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
-        const meta = `${it.filter || ''}${reason ? (it.filter ? ' · ' : '') + reason : ''}`;
+        const filterName = relFieldName(it.filter);
+        const meta = `${filterName}${reason ? (filterName ? ' · ' : '') + reason : ''}`;
         list.innerHTML += `
           <div class="card ${st.cc}" style="animation-delay:${i * .03}s">
             <div style="width:30px;flex-shrink:0;text-align:center;font-size:11px;font-weight:600;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtAge(it.timestamp)}</div>
