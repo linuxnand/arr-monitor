@@ -911,7 +911,6 @@ function renderIrc() {
 }
 
 async function toggleIrcNetwork(id, name) {
-  if (!confirm(`¿Desconectar y volver a conectar la red IRC "${name}"?`)) return;
   ircTogglingId = id;
   renderIrc();
   try {
