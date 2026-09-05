@@ -300,7 +300,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.9";
+const HTML_VERSION = "3.10";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -929,11 +929,27 @@ const relPageSize = 10;
 let relLoaded = false;
 let relTotal = null; // total de registros, si autobrr lo informa
 
-function relFmtDate(tsStr) {
+function relFmtAge(tsStr) {
   if (!tsStr) return '';
   const d = new Date(tsStr);
-  if (isNaN(d)) return tsStr;
-  return d.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  if (isNaN(d)) return '';
+  const diffMin = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+  if (diffMin < 60) return `${diffMin}m`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h`;
+  return `${Math.floor(diffH / 24)}d`;
+}
+
+const REL_INDEXER_OVERRIDES = {
+  aither: 'ATH', beyondhd: 'BHD', alpharatio: 'ALP', digitalcore: 'DGC', digitalirc: 'DIG',
+};
+function relIndexerAbbrev(name) {
+  if (!name) return '—';
+  const key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (REL_INDEXER_OVERRIDES[key]) return REL_INDEXER_OVERRIDES[key];
+  const upperLetters = name.replace(/[^A-Z]/g, '');
+  if (upperLetters.length >= 2 && upperLetters.length <= 4) return upperLetters;
+  return name.slice(0, 3).toUpperCase();
 }
 
 const REL_STATUS = {
@@ -977,10 +993,10 @@ async function loadReleases(offset) {
       items.forEach((it, i) => {
         const st = REL_STATUS[it.push_status] || { lc:'idle', lbl: it.push_status || '—', cc:'' };
         const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
-        const meta = `${it.indexer || ''}${it.filter ? ' · ' + it.filter : ''}${reason ? ' · ' + reason : ''}`;
+        const meta = `${it.filter || ''}${reason ? (it.filter ? ' · ' : '') + reason : ''}`;
         list.innerHTML += `
           <div class="card ${st.cc}" style="animation-delay:${i * .03}s">
-            <div class="svc-ico" style="background:rgba(88,166,255,.08)">🧾</div>
+            <div style="width:30px;flex-shrink:0;text-align:center;font-size:11px;font-weight:600;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtAge(it.timestamp)}</div>
             <div class="svc-info">
               <div class="svc-name">${(it.title || it.torrent_name || 'Lanzamiento').replace(/</g,'&lt;')}</div>
               <div class="svc-meta">${meta.replace(/</g,'&lt;')}</div>
@@ -989,7 +1005,7 @@ async function loadReleases(offset) {
               <div class="sl ${st.lc}"></div>
               <div class="stxt ${st.lc}" style="font-size:8px">${st.lbl}</div>
             </div>
-            <div style="width:38px;flex-shrink:0;text-align:right;font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtDate(it.timestamp)}</div>
+            <div style="width:42px;flex-shrink:0;display:flex;justify-content:flex-end"><span class="ping">${relIndexerAbbrev(it.indexer)}</span></div>
           </div>`;
       });
     }
