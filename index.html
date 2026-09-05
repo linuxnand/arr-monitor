@@ -300,7 +300,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.12";
+const HTML_VERSION = "3.13";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -966,6 +966,19 @@ const REL_STATUS = {
   PUSH_REJECTED: { lc:'down', lbl:'RECHAZADO', cc:'sdown' },
   PUSH_ERROR:    { lc:'chk',  lbl:'ERROR',     cc:'schk'  },
 };
+function relStatusFor(val) {
+  // autobrr puede mandar push_status como string simple, con distinta
+  // capitalización, o (en algunas versiones/endpoints) anidado en un
+  // objeto. Normalizamos y probamos varias formas antes de rendirnos.
+  let raw = val;
+  if (raw && typeof raw === 'object') raw = raw.status || raw.value || raw.push_status || '';
+  const key = typeof raw === 'string' ? raw.toUpperCase().trim() : '';
+  if (REL_STATUS[key]) return REL_STATUS[key];
+  if (/APPROV/.test(key)) return REL_STATUS.PUSH_APPROVED;
+  if (/REJECT/.test(key)) return REL_STATUS.PUSH_REJECTED;
+  if (/ERROR/.test(key)) return REL_STATUS.PUSH_ERROR;
+  return { lc:'idle', lbl: key || '—', cc:'' };
+}
 
 async function loadReleases(offset) {
   relLoaded = true;
@@ -989,7 +1002,7 @@ async function loadReleases(offset) {
     relTotal = (typeof raw.count === 'number') ? raw.count : ((typeof raw.total_count === 'number') ? raw.total_count : null);
     relOffset = offset;
 
-    const approved = items.filter(it => it.push_status === 'PUSH_APPROVED').length;
+    const approved = items.filter(it => relStatusFor(it.push_status).lbl === 'APROBADO').length;
     document.getElementById('relApproved').textContent = items.length ? approved : '—';
     document.getElementById('relShown').textContent = items.length ? items.length : '—';
     const rangeLbl = items.length ? `Mostrando ${offset + 1}–${offset + items.length}${relTotal != null ? ' de ' + relTotal : ''}` : 'Sin resultados';
@@ -1000,7 +1013,7 @@ async function loadReleases(offset) {
     } else {
       list.innerHTML = '';
       items.forEach((it, i) => {
-        const st = REL_STATUS[it.push_status] || { lc:'idle', lbl: it.push_status || '—', cc:'' };
+        const st = relStatusFor(it.push_status);
         const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
         const filterName = relFieldName(it.filter);
         const meta = `${filterName}${reason ? (filterName ? ' · ' : '') + reason : ''}`;
