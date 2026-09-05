@@ -300,7 +300,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.10";
+const HTML_VERSION = "3.11";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -1014,7 +1014,8 @@ async function loadReleases(offset) {
     document.getElementById('relNext').disabled = relTotal != null ? (offset + items.length >= relTotal) : (items.length < relPageSize);
   } catch (e) {
     document.getElementById('relLastCheck').textContent = `Error: ${e.name === 'AbortError' ? 'Timeout' : e.message}`;
-    list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">No se pudo consultar autobrr</div><div class="svc-meta">${(e.message||'').replace(/</g,'&lt;')}</div></div></div>`;
+    const hint = /ruta no encontrada/i.test(e.message || '') ? ' — reiniciá arrmonitor_server.py, parece estar corriendo una versión vieja' : '';
+    list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">No se pudo consultar autobrr</div><div class="svc-meta">${(e.message||'').replace(/</g,'&lt;')}${hint}</div></div></div>`;
   }
   if (b) { b.classList.remove('spin'); b.disabled = false; }
 }
