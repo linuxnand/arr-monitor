@@ -32,7 +32,6 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .rbtn:active{background:rgba(88,166,255,.15)}
 .rbtn svg{width:14px;height:14px}
 .rbtn.spin svg{animation:spin 1s linear infinite}
-.rbtn.active{background:rgba(63,185,80,.18);border-color:rgba(63,185,80,.45);color:var(--green)}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:7px 12px;display:flex;align-items:center;gap:10px;transition:border-color .3s,box-shadow .3s;animation:fadeUp .4s ease both}
@@ -213,22 +212,21 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
         </div>
         <div class="last" id="relLastCheck">Verificando...</div>
       </div>
-      <button class="rbtn" id="relRbtn" onclick="loadReleases(relOffset)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <polyline points="23 4 23 10 17 10"/>
-          <path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/>
-        </svg>
-        Verificar
-      </button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <button class="rbtn" id="relFilterBtn" style="padding:7px 12px;font-size:12px" onclick="toggleRelFilter()">✅ Solo aprobados</button>
-      <button class="rbtn" id="relDebugBtn" style="padding:7px 12px;font-size:12px" onclick="toggleRelDebug()">🐞 Debug</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="rbtn-svc" id="relFilterBtn" onclick="toggleRelFilter()" title="Mostrar solo aprobados">✓</button>
+        <button class="rbtn" id="relRbtn" onclick="relRefresh()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/>
+          </svg>
+          Verificar
+        </button>
+      </div>
     </div>
     <div class="list" id="relList"></div>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="rbtn" style="flex:1;justify-content:center" id="relPrev" onclick="loadReleases(Math.max(0, relOffset - relPageSize))">‹ Anteriores</button>
-      <button class="rbtn" style="flex:1;justify-content:center" id="relNext" onclick="loadReleases(relOffset + relPageSize)">Siguientes ›</button>
+      <button class="rbtn" style="flex:1;justify-content:center" id="relPrev" onclick="relGoPrev()">‹ Anteriores</button>
+      <button class="rbtn" style="flex:1;justify-content:center" id="relNext" onclick="relGoNext()">Siguientes ›</button>
     </div>
   </div>
 
@@ -708,7 +706,7 @@ function switchTab(name) {
   });
   if (name === 'cmds') renderCmds();
   if (name === 'irc') checkIrc();
-  if (name === 'rel' && !relLoaded) loadReleases(0);
+  if (name === 'rel' && !relLoaded) relInitialLoad();
 }
 
 // ── Comandos ───────────────────────────────────────────
@@ -786,7 +784,7 @@ async function runCmd(id) {
 // ese estado + el historial de reconexiones, y damos un boton para
 // forzar un reinicio manual si hace falta.
 let ircSt = { networks: [], monitorEnabled: null, lastCheck: null, lastError: null };
-let ircRestartingId = null;
+let ircTogglingId = null;
 
 function ircUrl(path) {
   return `http://${cfg.host}:${cfg.restartPort}${path}`;
@@ -833,11 +831,15 @@ async function fetchIrcEvents() {
 }
 
 const IRC_ACTION_LABEL = {
-  'unhealthy':      { txt: 'Detectado como no saludable', ico: '⚠️' },
-  'auto-restart':   { txt: 'Reinicio automático',          ico: '🔁' },
-  'manual-restart': { txt: 'Reinicio manual',              ico: '🖐️' },
-  'restart-error':  { txt: 'Error al reiniciar',           ico: '❌' },
-  'recovered':      { txt: 'Se recuperó',                  ico: '✅' },
+  'unhealthy':      { txt: 'Detectado como no saludable',      ico: '⚠️' },
+  'auto-toggle':    { txt: 'Desconexión/reconexión automática', ico: '🔌' },
+  'manual-toggle':  { txt: 'Desconexión/reconexión manual',     ico: '🖐️' },
+  'toggle-error':   { txt: 'Error al desconectar/reconectar',   ico: '❌' },
+  // acciones viejas, por si quedan eventos guardados de una version anterior
+  'auto-restart':   { txt: 'Reinicio automático',               ico: '🔁' },
+  'manual-restart': { txt: 'Reinicio manual',                   ico: '🖐️' },
+  'restart-error':  { txt: 'Error al reiniciar',                ico: '❌' },
+  'recovered':      { txt: 'Se recuperó',                       ico: '✅' },
 };
 
 function renderIrc() {
@@ -868,10 +870,10 @@ function renderIrc() {
       const lbl = disabled ? 'OFF' : (n.healthy === true ? 'OK' : n.healthy === false ? 'FALLA' : '···');
       const cc = disabled ? '' : (n.healthy === true ? 'sup' : n.healthy === false ? 'sdown' : 'schk');
       const meta = disabled ? 'Red deshabilitada en autobrr' : (n.healthy === true ? 'Conectada y saludable' : n.healthy === false ? 'No saludable — reconectando' : 'Estado desconocido');
-      const spinning = ircRestartingId === n.id;
+      const spinning = ircTogglingId === n.id;
       const rbtn = disabled ? `<div style="width:38px;flex-shrink:0"></div>` : (spinning
         ? `<button class="rbtn-svc spin" disabled onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg></button>`
-        : `<button class="rbtn-svc" onclick="event.stopPropagation();restartIrcNetwork(${n.id}, '${(n.name||'').replace(/'/g, "\\'")}')" title="Reiniciar ${n.name || ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.5-8.6L23 10"/></svg></button>`);
+        : `<button class="rbtn-svc" onclick="event.stopPropagation();toggleIrcNetwork(${n.id}, '${(n.name||'').replace(/'/g, "\\'")}')" title="Desconectar y reconectar ${n.name || ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></button>`);
       l.innerHTML += `
         <div class="card ${cc}" style="animation-delay:${i * .05}s">
           <div class="svc-ico" style="background:rgba(88,166,255,.08)">💬</div>
@@ -895,7 +897,7 @@ function renderIrc() {
     el.innerHTML = '';
     ircEventsCache.forEach(ev => {
       const info = IRC_ACTION_LABEL[ev.action] || { txt: ev.action, ico: 'ℹ️' };
-      const cls = ev.action === 'restart-error' ? 'cdanger' : ev.action === 'recovered' ? 'cgreen' : 'cnormal';
+      const cls = (ev.action === 'toggle-error' || ev.action === 'restart-error') ? 'cdanger' : ev.action === 'recovered' ? 'cgreen' : 'cnormal';
       el.innerHTML += `
         <div class="cmd-card ${cls}">
           <div class="cmd-ico">${info.ico}</div>
@@ -908,17 +910,17 @@ function renderIrc() {
   }
 }
 
-async function restartIrcNetwork(id, name) {
-  if (!confirm(`¿Reiniciar la red IRC "${name}"?`)) return;
-  ircRestartingId = id;
+async function toggleIrcNetwork(id, name) {
+  if (!confirm(`¿Desconectar y volver a conectar la red IRC "${name}"?`)) return;
+  ircTogglingId = id;
   renderIrc();
   try {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 15000);
-    await fetch(ircUrl(`/irc/restart/${id}`), { signal: ctrl.signal, mode: 'cors' });
+    await fetch(ircUrl(`/irc/toggle/${id}`), { signal: ctrl.signal, mode: 'cors' });
     clearTimeout(tid);
   } catch (e) { /* el resultado se refleja igual en el proximo chequeo */ }
-  ircRestartingId = null;
+  ircTogglingId = null;
   setTimeout(checkIrc, 2500);
 }
 
@@ -933,9 +935,20 @@ let relOffset = 0;
 const relPageSize = 10;
 let relLoaded = false;
 let relTotal = null; // total de registros, si autobrr lo informa
-let relRawItems = [];  // ultima pagina recibida de autobrr, sin filtrar
+let relRawItems = [];  // ultima pagina recibida de autobrr, sin filtrar (modo normal)
 let relOnlyApproved = localStorage.getItem('relOnlyApproved') === '1';
-let relDebug = localStorage.getItem('relDebug') === '1';
+
+// ── Modo "solo aprobados" ───────────────────────────────
+// A diferencia del modo normal (que pagina tal cual autobrr), acá vamos
+// juntando aprobados de a bloques hasta tener una página completa, para
+// que nunca se vea una página vacía solo porque en esa tanda de autobrr
+// no hubo ningún aprobado.
+let relApprovedAll = [];        // aprobados acumulados hasta ahora, en orden
+let relApprovedScanOffset = 0;  // proximo offset "crudo" a pedirle a autobrr
+let relApprovedTotal = null;    // total crudo que informa autobrr (si lo informa)
+let relApprovedExhausted = false; // true cuando ya no hay mas datos que pedir
+let relApprovedPageStart = 0;   // indice donde arranca la pagina que se esta mostrando
+const REL_SCAN_CHUNK = 25;      // cuantos items "crudos" se piden por vuelta al escanear
 
 function relFmtAge(tsStr) {
   if (!tsStr) return '';
@@ -1007,53 +1020,94 @@ function relStatusForItem(it) {
   }
   return REL_IDLE;
 }
-// Junta, para el modo debug, todos los campos "crudos" relacionados al
-// estado que encontramos en el item tal cual los manda autobrr.
-function relRawStatusValues(it) {
-  const vals = [];
-  if (!it || typeof it !== 'object') return vals;
-  if (it.push_status !== undefined) vals.push(`push_status: ${JSON.stringify(it.push_status)}`);
-  if (it.status !== undefined) vals.push(`status: ${JSON.stringify(it.status)}`);
-  if (it.filter_status !== undefined) vals.push(`filter_status: ${JSON.stringify(it.filter_status)}`);
-  if (Array.isArray(it.action_status)) {
-    it.action_status.forEach((a, idx) => {
-      vals.push(`action_status[${idx}].status: ${JSON.stringify(a && a.status)}`);
-    });
-  }
-  return vals;
+function updateRelFilterButton() {
+  const fb = document.getElementById('relFilterBtn');
+  if (fb) fb.classList.toggle('ok', relOnlyApproved);
 }
 
-function updateRelToggleButtons() {
-  const fb = document.getElementById('relFilterBtn');
-  const db = document.getElementById('relDebugBtn');
-  if (fb) fb.classList.toggle('active', relOnlyApproved);
-  if (db) db.classList.toggle('active', relDebug);
+function resetApprovedScan() {
+  relApprovedAll = [];
+  relApprovedScanOffset = 0;
+  relApprovedTotal = null;
+  relApprovedExhausted = false;
+  relApprovedPageStart = 0;
+}
+
+async function fetchReleasesPage(offset, limit) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const res = await fetch(
+      ircUrl(`/releases?limit=${limit}&offset=${offset}`),
+      { signal: ctrl.signal, mode: 'cors', cache: 'no-store' }
+    );
+    const raw = await res.json();
+    if (!res.ok || raw.ok === false) throw new Error(raw?.error || `HTTP ${res.status}`);
+    const items = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+    const total = (typeof raw.count === 'number') ? raw.count : ((typeof raw.total_count === 'number') ? raw.total_count : null);
+    return { items, total };
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
+// Sigue pidiendo bloques de autobrr hasta juntar al menos "minCount"
+// aprobados, o hasta agotar el historial disponible.
+async function ensureApprovedFilled(minCount) {
+  while (relApprovedAll.length < minCount && !relApprovedExhausted) {
+    const { items, total } = await fetchReleasesPage(relApprovedScanOffset, REL_SCAN_CHUNK);
+    if (typeof total === 'number') relApprovedTotal = total;
+    relApprovedScanOffset += items.length;
+    relApprovedAll = relApprovedAll.concat(items.filter(it => relStatusForItem(it).lbl === 'APROBADO'));
+    if (items.length < REL_SCAN_CHUNK) relApprovedExhausted = true;
+    if (relApprovedTotal != null && relApprovedScanOffset >= relApprovedTotal) relApprovedExhausted = true;
+  }
 }
 
 function toggleRelFilter() {
   relOnlyApproved = !relOnlyApproved;
   try { localStorage.setItem('relOnlyApproved', relOnlyApproved ? '1' : '0'); } catch(e) {}
-  updateRelToggleButtons();
-  renderReleaseList();
+  updateRelFilterButton();
+  if (relOnlyApproved) {
+    resetApprovedScan();
+    loadApprovedPage(0);
+  } else {
+    loadReleases(relOffset);
+  }
 }
 
-function toggleRelDebug() {
-  relDebug = !relDebug;
-  try { localStorage.setItem('relDebug', relDebug ? '1' : '0'); } catch(e) {}
-  updateRelToggleButtons();
-  renderReleaseList();
+function relRefresh() {
+  if (relOnlyApproved) { resetApprovedScan(); loadApprovedPage(0); }
+  else loadReleases(relOffset);
+}
+
+function relGoPrev() {
+  if (relOnlyApproved) loadApprovedPage(Math.max(0, relApprovedPageStart - relPageSize));
+  else loadReleases(Math.max(0, relOffset - relPageSize));
+}
+
+function relGoNext() {
+  if (relOnlyApproved) loadApprovedPage(relApprovedPageStart + relPageSize);
+  else loadReleases(relOffset + relPageSize);
+}
+
+function relInitialLoad() {
+  relLoaded = true;
+  updateRelFilterButton();
+  if (relOnlyApproved) { resetApprovedScan(); loadApprovedPage(0); }
+  else loadReleases(0);
 }
 
 function renderReleaseList() {
   const list = document.getElementById('relList');
   if (!list) return;
   const items = relOnlyApproved
-    ? relRawItems.filter(it => relStatusForItem(it).lbl === 'APROBADO')
+    ? relApprovedAll.slice(relApprovedPageStart, relApprovedPageStart + relPageSize)
     : relRawItems;
 
   if (!items.length) {
-    const msg = relOnlyApproved && relRawItems.length
-      ? 'Ningún lanzamiento aprobado en esta página'
+    const msg = relOnlyApproved
+      ? 'No se encontraron lanzamientos aprobados'
       : `No hay lanzamientos${relOffset > 0 ? ' en esta página' : ''}`;
     list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">${msg}</div></div></div>`;
     return;
@@ -1065,17 +1119,12 @@ function renderReleaseList() {
     const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
     const filterName = relFieldName(it.filter);
     const meta = `${filterName}${reason ? (filterName ? ' · ' : '') + reason : ''}`;
-    const debugVals = relDebug ? relRawStatusValues(it) : [];
-    const debugLine = relDebug
-      ? `<div class="svc-meta" style="font-family:'JetBrains Mono',monospace;font-size:10px;opacity:.75;word-break:break-all">${(debugVals.join(' | ') || 'sin campos de estado en el item').replace(/</g,'&lt;')}</div>`
-      : '';
     list.innerHTML += `
       <div class="card ${st.cc}" style="animation-delay:${i * .03}s">
         <div style="width:30px;flex-shrink:0;text-align:center;font-size:11px;font-weight:600;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtAge(it.timestamp)}</div>
         <div class="svc-info">
           <div class="svc-name">${(it.title || it.torrent_name || 'Lanzamiento').replace(/</g,'&lt;')}</div>
           <div class="svc-meta">${meta.replace(/</g,'&lt;')}</div>
-          ${debugLine}
         </div>
         <div class="sw">
           <div class="sl ${st.lc}"></div>
@@ -1094,18 +1143,8 @@ async function loadReleases(offset) {
   const list = document.getElementById('relList');
 
   try {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 15000);
-    const res = await fetch(
-      ircUrl(`/releases?limit=${relPageSize}&offset=${offset}`),
-      { signal: ctrl.signal, mode: 'cors', cache: 'no-store' }
-    );
-    clearTimeout(tid);
-    const raw = await res.json();
-    if (!res.ok || raw.ok === false) throw new Error(raw?.error || `HTTP ${res.status}`);
-
-    const items = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
-    relTotal = (typeof raw.count === 'number') ? raw.count : ((typeof raw.total_count === 'number') ? raw.total_count : null);
+    const { items, total } = await fetchReleasesPage(offset, relPageSize);
+    relTotal = total;
     relOffset = offset;
     relRawItems = items;
 
@@ -1115,7 +1154,6 @@ async function loadReleases(offset) {
     const rangeLbl = items.length ? `Mostrando ${offset + 1}–${offset + items.length}${relTotal != null ? ' de ' + relTotal : ''}` : 'Sin resultados';
     document.getElementById('relLastCheck').textContent = rangeLbl;
 
-    updateRelToggleButtons();
     renderReleaseList();
 
     document.getElementById('relPrev').disabled = offset <= 0;
@@ -1124,6 +1162,41 @@ async function loadReleases(offset) {
     document.getElementById('relLastCheck').textContent = `Error: ${e.name === 'AbortError' ? 'Timeout' : e.message}`;
     const hint = /ruta no encontrada/i.test(e.message || '') ? ' — reiniciá arrmonitor_server.py, parece estar corriendo una versión vieja' : '';
     list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">No se pudo consultar autobrr</div><div class="svc-meta">${(e.message||'').replace(/</g,'&lt;')}${hint}</div></div></div>`;
+  }
+  if (b) { b.classList.remove('spin'); b.disabled = false; }
+}
+
+// Igual que loadReleases pero para el modo "solo aprobados": arma la
+// página pedida juntando bloques de autobrr hasta completarla (o hasta
+// quedarse sin más historial), así nunca queda una página vacía.
+async function loadApprovedPage(pageStart) {
+  relLoaded = true;
+  if (pageStart < 0) pageStart = 0;
+  const b = document.getElementById('relRbtn');
+  if (b) { b.classList.add('spin'); b.disabled = true; }
+  const list = document.getElementById('relList');
+
+  try {
+    await ensureApprovedFilled(pageStart + relPageSize);
+    if (relApprovedExhausted && pageStart >= relApprovedAll.length && relApprovedAll.length > 0) {
+      pageStart = Math.floor((relApprovedAll.length - 1) / relPageSize) * relPageSize;
+    }
+    relApprovedPageStart = Math.max(0, pageStart);
+    renderReleaseList();
+
+    const shown = Math.min(relPageSize, Math.max(0, relApprovedAll.length - relApprovedPageStart));
+    document.getElementById('relApproved').textContent = relApprovedAll.length ? relApprovedAll.length : '—';
+    document.getElementById('relShown').textContent = shown || '—';
+    const rangeLbl = relApprovedAll.length
+      ? `Aprobados ${relApprovedPageStart + 1}–${relApprovedPageStart + shown}${relApprovedExhausted ? ' de ' + relApprovedAll.length : ' (buscando más...)'}`
+      : (relApprovedExhausted ? 'No se encontraron lanzamientos aprobados' : 'Buscando aprobados...');
+    document.getElementById('relLastCheck').textContent = rangeLbl;
+
+    document.getElementById('relPrev').disabled = relApprovedPageStart <= 0;
+    document.getElementById('relNext').disabled = relApprovedExhausted && (relApprovedPageStart + relPageSize >= relApprovedAll.length);
+  } catch (e) {
+    document.getElementById('relLastCheck').textContent = `Error: ${e.name === 'AbortError' ? 'Timeout' : e.message}`;
+    list.innerHTML = `<div class="card"><div class="svc-info"><div class="svc-name">No se pudo consultar autobrr</div><div class="svc-meta">${(e.message||'').replace(/</g,'&lt;')}</div></div></div>`;
   }
   if (b) { b.classList.remove('spin'); b.disabled = false; }
 }
@@ -1143,7 +1216,7 @@ document.addEventListener('visibilitychange', () => {
 // Init — cargar config guardada (o defaults), arrancar directo
 load();
 render();
-updateRelToggleButtons();
+updateRelFilterButton();
 updateFooter();
 checkAll();
 fetchIrcStatus().then(() => { fetchIrcEvents().then(renderIrc); });
