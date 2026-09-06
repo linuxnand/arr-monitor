@@ -918,9 +918,14 @@ async function toggleIrcNetwork(id, name) {
     const tid = setTimeout(() => ctrl.abort(), 15000);
     await fetch(ircUrl(`/irc/toggle/${id}`), { signal: ctrl.signal, mode: 'cors' });
     clearTimeout(tid);
-  } catch (e) { /* el resultado se refleja igual en el proximo chequeo */ }
-  ircTogglingId = null;
-  setTimeout(checkIrc, 2500);
+  } catch (e) { /* el servidor sigue el proceso igual aunque esto falle */ }
+  // El servidor responde al toque, pero el proceso real (desconectar,
+  // esperar ~30s, reconectar y verificar) sigue corriendo en segundo
+  // plano ahi — mantenemos el spinner ese tiempo antes de re-chequear.
+  setTimeout(() => {
+    ircTogglingId = null;
+    checkIrc();
+  }, 42000);
 }
 
 // ── Lanzamientos / Release history (autobrr) ───────────
