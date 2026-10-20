@@ -588,27 +588,45 @@ async function checkSvc(svc) {
 async function restartSvc(id) {
   rst[id] = 'restarting';
   render();
+  const slow = id === 'qbittorrent';   // cierra guardando estado y su WebUI tarda minutos en volver
+  const svc = SVCS.find(s => s.id === id);
+  let ok = false;
+  let failedFast = false;              // el servidor respondio con error: no tiene sentido esperar
   try {
     const ctrl = new AbortController();
-    // qBittorrent cierra, espera y vuelve a abrir: tarda bastante mas que un schtasks.
-    const tid = setTimeout(() => ctrl.abort(), id === 'qbittorrent' ? 35000 : 8000);
+    const tid = setTimeout(() => ctrl.abort(), slow ? 160000 : 8000);
     const res = await fetch(
       `http://${cfg.host}:${cfg.restartPort}/restart/${id}`,
       { signal: ctrl.signal, mode: 'cors' }
     );
     clearTimeout(tid);
-    rst[id] = res.ok ? 'ok' : 'err';
+    ok = res.ok;
+    failedFast = !res.ok;
   } catch(e) {
-    rst[id] = 'err';
+    ok = false;   // timeout / celular en 2do plano: igual verificamos si el servicio volvio
   }
+
+  if (slow && svc && !failedFast) {
+    // Esperar (hasta 5 min) a que la WebUI vuelva a responder, manteniendo el spinner.
+    const deadline = Date.now() + 5 * 60 * 1000;
+    let up = false;
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 10000));
+      await checkSvc(svc);
+      render(); updateSum();
+      if (st[id]?.state === 'up') { up = true; break; }
+    }
+    ok = up;
+  }
+
+  rst[id] = ok ? 'ok' : 'err';
   render();
-  // Limpiar estado visual y re-chequear (qBittorrent tarda mas en levantar su WebUI)
+  // Limpiar estado visual y re-chequear
   setTimeout(() => {
     delete rst[id];
-    const svc = SVCS.find(s => s.id === id);
     if (svc) checkSvc(svc).then(() => { render(); updateSum(); });
     else render();
-  }, id === 'qbittorrent' ? 8000 : 3000);
+  }, 3000);
 }
 
 async function checkRestartServer() {
