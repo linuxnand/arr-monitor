@@ -488,7 +488,7 @@ async function runUpdate(id) {
   renderVersionPanel(id);
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 600000); // hasta 10 min
+    const tid = setTimeout(() => ctrl.abort(), 1200000); // hasta 20 min (winget puede tardar ~10)
     const res = await fetch(`http://${cfg.host}:${cfg.restartPort}/update/${id}`, { signal: ctrl.signal, mode: 'cors' });
     clearTimeout(tid);
     const data = await res.json();
