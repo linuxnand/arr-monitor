@@ -417,9 +417,11 @@ function versionPanelHtml(id) {
       <div class="vupbtn" onclick="event.stopPropagation();runUpdate('${id}')">↻ Reintentar</div>`;
   }
   // state === 'checked'
+  const srcLabel = v.latestSource === 'winget' ? ' <span style="opacity:.6;font-size:.85em">(winget)</span>' : '';
   const rows = `
     <div class="vrow"><span class="vl">Instalada</span><span class="vv">${v.current || 'desconocida'}</span></div>
-    <div class="vrow"><span class="vl">Última</span><span class="vv">${v.latest || 'desconocida'}</span></div>`;
+    <div class="vrow"><span class="vl">Última</span><span class="vv">${v.latest || 'desconocida'}${srcLabel}</span></div>`
+    + (v.wingetBehind ? `<div class="vmsg">GitHub ya publicó ${v.githubVersion}, pero winget todavía no.</div>` : '');
   if (v.needsUpdate) {
     return rows + `<div class="vupbtn" onclick="event.stopPropagation();runUpdate('${id}')">⬆ Actualizar ahora</div>`;
   }
@@ -467,6 +469,9 @@ async function checkVersion(id) {
         current: data.current_version,
         latest: data.latest_version,
         needsUpdate: !!data.needs_update,
+        latestSource: data.latest_source,
+        githubVersion: data.github_version,
+        wingetBehind: !!data.winget_behind,
       };
     } else {
       verSt[id] = { state: 'check-error', msg: data.error || `HTTP ${res.status}` };
