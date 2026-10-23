@@ -287,7 +287,7 @@ const SVCS = [
   { id:'sonarr',    name:'Sonarr',     port:8989, ico:'<img src="https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📺\')">', cls:'iso', paths:['/api/v3/health','/'],            restart:'sonarr', updatable:true },
   { id:'prowlarr',  name:'Prowlarr',   port:9696, ico:'<img src="https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/Logo/Prowlarr.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🔍\')">', cls:'ipr', paths:['/api/v1/health','/'],        restart:'prowlarr', updatable:true },
   { id:'autobrr',   name:'Autobrr',    port:7474, ico:'<img src="https://raw.githubusercontent.com/autobrr/autobrr/develop/web/src/images/logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.src=\'https://autobrr.com/img/logo.png\';this.onerror=null;">', cls:'iau', paths:['/api/healthz/liveness','/'], restart:'autobrr', updatable:true },
-  { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed' },
+  { id:'crossseed', name:'Cross-seed', port:2468, ico:'<img src="https://raw.githubusercontent.com/cross-seed/cross-seed/master/static/cross-seed.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🌱\')">', cls:'ics', paths:['/api/ping','/'],        restart:'crossseed', updatable:true },
   { id:'qui',       name:'Qui',        port:7476, ico:'<img src="https://getqui.com/img/qui.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📊\')">', cls:'ibz',  paths:['/api/healthz','/health','/'], restart:'qui', updatable:true },
   { id:'bazarr',    name:'Bazarr',     port:6767, ico:'<img src="https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/bazarr-logo.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'🗣\')">', cls:'ibzr', paths:['/api/system/health','/'], restart:'bazarr' },
   { id:'qbittorrent',name:'qBittorrent', port:22222, fixedHost:'192.168.68.54', ico:'<img src="https://upload.wikimedia.org/wikipedia/commons/3/3f/QBittorrent_Logo.svg" style="width:26px;height:26px;object-fit:contain;" onerror="this.replaceWith(\'📥\')">', cls:'iqbt', paths:['/api/v2/app/version','/'], restart:'qbittorrent', updatable:true },
@@ -421,7 +421,8 @@ function versionPanelHtml(id) {
   const rows = `
     <div class="vrow"><span class="vl">Instalada</span><span class="vv">${v.current || 'desconocida'}</span></div>
     <div class="vrow"><span class="vl">Última</span><span class="vv">${v.latest || 'desconocida'}${srcLabel}</span></div>`
-    + (v.wingetBehind ? `<div class="vmsg">GitHub ya publicó ${v.githubVersion}, pero winget todavía no.</div>` : '');
+    + (v.wingetBehind ? `<div class="vmsg">GitHub ya publicó ${v.githubVersion}, pero winget todavía no.</div>` : '')
+    + (v.note ? `<div class="vmsg">${v.note}</div>` : '');
   if (v.needsUpdate) {
     return rows + `<div class="vupbtn" onclick="event.stopPropagation();runUpdate('${id}')">⬆ Actualizar ahora</div>`;
   }
@@ -472,6 +473,7 @@ async function checkVersion(id) {
         latestSource: data.latest_source,
         githubVersion: data.github_version,
         wingetBehind: !!data.winget_behind,
+        note: data.note,
       };
     } else {
       verSt[id] = { state: 'check-error', msg: data.error || `HTTP ${res.status}` };
