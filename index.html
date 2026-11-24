@@ -118,6 +118,13 @@ footer{text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrain
 .card{cursor:default}
 .card.expandable{cursor:pointer}
 .card.expandable:active{background:var(--s2)}
+.rel-wrap{display:flex;flex-direction:column}
+.rel-wrap.open>.card{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.rel-panel{display:none;background:var(--s2);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:8px 12px;gap:8px;align-items:center;justify-content:space-between}
+.rel-wrap.open>.rel-panel{display:flex;animation:fadeUp .25s ease both}
+.rel-q{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rel-imdb{flex-shrink:0;background:#f5c518;color:#000;font-weight:800;font-size:12px;text-decoration:none;border-radius:5px;padding:5px 10px;letter-spacing:.3px}
+.rel-imdb:active{opacity:.8}
 .vexp{max-height:0;overflow:hidden;transition:max-height .25s ease,border-color .25s ease,margin-bottom .25s ease;background:var(--surface);border:1px solid transparent;border-top:none;border-radius:0 0 var(--r) var(--r);margin-top:-6px;margin-bottom:0}
 .vexp.open{border-color:var(--border);margin-bottom:6px}
 .vexp-in{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
@@ -304,7 +311,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', plex:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.14";
+const HTML_VERSION = "3.15";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -1169,6 +1176,30 @@ function relInitialLoad() {
   else loadReleases(0);
 }
 
+// ── Link a IMDb de cada release ────────────────────────
+// Si autobrr trae el id de IMDb (tt1234567) se abre la ficha directa;
+// si no, se abre la busqueda de IMDb con el titulo (+ año) del release.
+let relExpanded = new Set();
+function relImdbInfo(it) {
+  const idRaw = it.imdb_id || it.imdbId || it.imdb || '';
+  const m = String(idRaw).match(/tt\d{6,10}/i);
+  if (m) return { url: `https://www.imdb.com/title/${m[0].toLowerCase()}/`, label: m[0].toLowerCase(), direct: true };
+  let q = (it.title || '').trim();
+  if (q && it.year && !q.includes(String(it.year))) q += ' ' + it.year;
+  if (!q) {
+    // Sin titulo parseado: limpiamos el nombre del torrent (puntos -> espacios, corta en año/resolucion)
+    q = String(it.torrent_name || it.name || '').replace(/[._]+/g, ' ')
+      .replace(/\s+(S\d{1,2}(E\d{1,3})?|(19|20)\d{2}|\d{3,4}p|2160p).*$/i, '').trim();
+  }
+  if (!q) return null;
+  return { url: `https://www.imdb.com/find/?q=${encodeURIComponent(q)}&s=tt`, label: q, direct: false };
+}
+function relToggle(k) {
+  if (relExpanded.has(k)) relExpanded.delete(k); else relExpanded.add(k);
+  const el = document.querySelector(`[data-relkey="${CSS.escape(k)}"]`);
+  if (el) el.classList.toggle('open', relExpanded.has(k));
+}
+
 function renderReleaseList() {
   const list = document.getElementById('relList');
   if (!list) return;
@@ -1190,8 +1221,18 @@ function renderReleaseList() {
     const reason = Array.isArray(it.rejections) && it.rejections.length ? it.rejections.join(', ') : '';
     const filterName = relFieldName(it.filter);
     const meta = `${filterName}${reason ? (filterName ? ' · ' : '') + reason : ''}`;
+    const imdb = relImdbInfo(it);
+    const rkey = String(it.id != null ? it.id : (it.torrent_name || it.title || i)) + '|' + (it.timestamp || '');
+    const rkeyAttr = rkey.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    const rkeyJs = rkey.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const panel = imdb ? `
+        <div class="rel-panel">
+          <span class="rel-q">${(imdb.direct ? '🔗 ' : '🔎 ') + imdb.label.replace(/</g,'&lt;')}</span>
+          <a class="rel-imdb" href="${imdb.url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${imdb.direct ? 'Abrir en IMDb' : 'Buscar en IMDb'}</a>
+        </div>` : '';
     list.innerHTML += `
-      <div class="card ${st.cc}" style="animation-delay:${i * .03}s">
+     <div class="rel-wrap${imdb && relExpanded.has(rkey) ? ' open' : ''}" data-relkey="${rkeyAttr}">
+      <div class="card ${st.cc}${imdb ? ' expandable' : ''}" style="animation-delay:${i * .03}s"${imdb ? ` onclick="relToggle('${rkeyJs}')"` : ''}>
         <div style="width:30px;flex-shrink:0;text-align:center;font-size:11px;font-weight:600;color:var(--muted);font-family:'JetBrains Mono',monospace">${relFmtAge(it.timestamp)}</div>
         <div class="svc-info">
           <div class="svc-name">${(it.title || it.torrent_name || 'Lanzamiento').replace(/</g,'&lt;')}</div>
@@ -1202,7 +1243,8 @@ function renderReleaseList() {
           <div class="stxt ${st.lc}" style="font-size:8px">${st.lbl}</div>
         </div>
         <div style="width:42px;flex-shrink:0;display:flex;justify-content:flex-end"><span class="ping">${relIndexerAbbrev(it.indexer)}</span></div>
-      </div>`;
+      </div>${panel}
+     </div>`;
   });
 }
 
