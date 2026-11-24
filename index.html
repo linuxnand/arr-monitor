@@ -311,7 +311,7 @@ const DEFAULTS = {
   apikeys: { radarr:'', sonarr:'', prowlarr:'', autobrr:'', crossseed:'', plex:'', qui:'', bazarr:'', qbittorrent:'', vuetorrent:'' }
 };
 
-const HTML_VERSION = "3.15";
+const HTML_VERSION = "3.16";
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 let st = {};
@@ -1180,10 +1180,22 @@ function relInitialLoad() {
 // Si autobrr trae el id de IMDb (tt1234567) se abre la ficha directa;
 // si no, se abre la busqueda de IMDb con el titulo (+ año) del release.
 let relExpanded = new Set();
+// En Android (Chrome) un link https normal se abre dentro de Chrome. Con un
+// "intent://" dirigido al paquete de la app de IMDb (com.imdb.mobile) se abre
+// la app directamente; si la app no esta instalada, Chrome usa el link web
+// (browser_fallback_url). En PC u otros sistemas se deja el link normal.
+const REL_IS_ANDROID = /Android/i.test(navigator.userAgent);
+function relAppUrl(webUrl, hostPath, scheme) {
+  if (!REL_IS_ANDROID) return webUrl;
+  return `intent://${hostPath}#Intent;scheme=${scheme};package=com.imdb.mobile;S.browser_fallback_url=${encodeURIComponent(webUrl)};end`;
+}
 function relImdbInfo(it) {
   const idRaw = it.imdb_id || it.imdbId || it.imdb || '';
   const m = String(idRaw).match(/tt\d{6,10}/i);
-  if (m) return { url: `https://www.imdb.com/title/${m[0].toLowerCase()}/`, label: m[0].toLowerCase(), direct: true };
+  if (m) {
+    const id = m[0].toLowerCase();
+    return { url: relAppUrl(`https://www.imdb.com/title/${id}/`, `www.imdb.com/title/${id}/`, 'https'), label: id, direct: true };
+  }
   let q = (it.title || '').trim();
   if (q && it.year && !q.includes(String(it.year))) q += ' ' + it.year;
   if (!q) {
@@ -1192,7 +1204,8 @@ function relImdbInfo(it) {
       .replace(/\s+(S\d{1,2}(E\d{1,3})?|(19|20)\d{2}|\d{3,4}p|2160p).*$/i, '').trim();
   }
   if (!q) return null;
-  return { url: `https://www.imdb.com/find/?q=${encodeURIComponent(q)}&s=tt`, label: q, direct: false };
+  const web = `https://www.imdb.com/find/?q=${encodeURIComponent(q)}&s=tt`;
+  return { url: relAppUrl(web, `www.imdb.com/find/?q=${encodeURIComponent(q)}&s=tt`, 'https'), label: q, direct: false };
 }
 function relToggle(k) {
   if (relExpanded.has(k)) relExpanded.delete(k); else relExpanded.add(k);
@@ -1228,7 +1241,7 @@ function renderReleaseList() {
     const panel = imdb ? `
         <div class="rel-panel">
           <span class="rel-q">${(imdb.direct ? '🔗 ' : '🔎 ') + imdb.label.replace(/</g,'&lt;')}</span>
-          <a class="rel-imdb" href="${imdb.url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${imdb.direct ? 'Abrir en IMDb' : 'Buscar en IMDb'}</a>
+          <a class="rel-imdb" href="${imdb.url}"${REL_IS_ANDROID ? '' : ' target="_blank" rel="noopener noreferrer"'} onclick="event.stopPropagation()">${imdb.direct ? 'Abrir en IMDb' : 'Buscar en IMDb'}</a>
         </div>` : '';
     list.innerHTML += `
      <div class="rel-wrap${imdb && relExpanded.has(rkey) ? ' open' : ''}" data-relkey="${rkeyAttr}">
